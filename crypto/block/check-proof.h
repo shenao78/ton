@@ -88,4 +88,26 @@ struct TransactionList {
   td::Result<Info> validate() const;
 };
 
+struct BlockTransaction {
+  td::Ref<vm::Cell> root;
+
+  struct Info {
+    td::uint32 now;
+    ton::LogicalTime lt;
+    ton::Bits256 hash;
+    td::Ref<vm::Cell> transaction;
+  };
+  td::Result<Info> validate();
+};
+
+struct BlockTransactionList {
+  td::BufferSlice transactions_boc;
+
+  struct Info {
+    std::vector<BlockTransaction::Info> transactions;
+  };
+
+  td::Result<Info> validate() const;
+};
+
 }  // namespace block
