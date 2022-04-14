@@ -324,6 +324,7 @@ td::Result<BlockTransaction::Info> BlockTransaction::validate() {
     return td::Status::Error("cannot unpack transaction #");
   }
   Info res;
+  res.blkid = blkid;
   res.now = trans.now;
   res.lt = trans.lt;
   res.hash = root->get_hash().bits();
@@ -342,6 +343,7 @@ td::Result<BlockTransactionList::Info> BlockTransactionList::validate() const {
   for (auto& root : list) {
     BlockTransaction transaction;
     transaction.root = root;
+    transaction.blkid = blkid;
     TRY_RESULT(info, transaction.validate());
     res.transactions.push_back(std::move(info));
   }

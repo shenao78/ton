@@ -2363,7 +2363,8 @@ struct ToRawTransactions {
         return td::Status::Error("Failed to fetch storage fee from transaction");
       }
       storage_fee = storage_fees->to_long();
-      address = trans.account_addr.as_slice().str();
+      auto std_address = block::StdAddress(info.blkid.id.workchain, trans.account_addr);
+      address = std_address.rserialize(true);
     }
     return tonlib_api::make_object<tonlib_api::raw_transaction>(
         tonlib_api::make_object<tonlib_api::accountAddress>(std::move(address)),
@@ -2441,7 +2442,8 @@ struct ToRawTransactions {
         return td::Status::Error("Failed to fetch storage fee from transaction");
       }
       storage_fee = storage_fees->to_long();
-      address = trans.account_addr.as_slice().str();
+      auto std_address = block::StdAddress(info.blkid.id.workchain, trans.account_addr);
+      address = std_address.rserialize(true);
     }
     return tonlib_api::make_object<tonlib_api::raw_transaction>(
         tonlib_api::make_object<tonlib_api::accountAddress>(std::move(address)),
@@ -4411,6 +4413,7 @@ td::Status TonlibClient::do_request(const tonlib_api::blocks_getTransactionsExt&
                         r.incomplete_ = bTxes->incomplete_;
                         // bTxes->transactions to block::BlockTransactionList::Info
                         block::BlockTransactionList list;
+                        list.blkid = create_block_id(id);
                         list.transactions_boc = std::move(bTxes->transactions_->transactions_);
                         auto info = list.validate();
                         if (info.is_error()) {
