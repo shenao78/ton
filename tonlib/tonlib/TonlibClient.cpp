@@ -2324,6 +2324,7 @@ struct ToRawTransactions {
     std::vector<tonlib_api::object_ptr<tonlib_api::raw_message>> out_msgs;
     td::int64 fees = 0;
     td::int64 storage_fee = 0;
+    td::string address;
     if (info.transaction.not_null()) {
       data = to_bytes(info.transaction);
       block::gen::Transaction::Record trans;
@@ -2362,8 +2363,10 @@ struct ToRawTransactions {
         return td::Status::Error("Failed to fetch storage fee from transaction");
       }
       storage_fee = storage_fees->to_long();
+      address = trans.account_addr.as_slice().str();
     }
     return tonlib_api::make_object<tonlib_api::raw_transaction>(
+        tonlib_api::make_object<tonlib_api::accountAddress>(std::move(address)),
         info.now, data,
         tonlib_api::make_object<tonlib_api::internal_transactionId>(info.prev_trans_lt,
                                                                     info.prev_trans_hash.as_slice().str()),
@@ -2399,6 +2402,7 @@ struct ToRawTransactions {
     std::vector<tonlib_api::object_ptr<tonlib_api::raw_message>> out_msgs;
     td::int64 fees = 0;
     td::int64 storage_fee = 0;
+    td::string address;
     if (info.transaction.not_null()) {
       data = to_bytes(info.transaction);
       block::gen::Transaction::Record trans;
@@ -2437,8 +2441,10 @@ struct ToRawTransactions {
         return td::Status::Error("Failed to fetch storage fee from transaction");
       }
       storage_fee = storage_fees->to_long();
+      address = trans.account_addr.as_slice().str();
     }
     return tonlib_api::make_object<tonlib_api::raw_transaction>(
+        tonlib_api::make_object<tonlib_api::accountAddress>(std::move(address)),
         info.now, data,
         tonlib_api::make_object<tonlib_api::internal_transactionId>(info.lt,
                                                                     info.hash.as_slice().str()),
