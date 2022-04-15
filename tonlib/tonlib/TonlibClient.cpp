@@ -2465,7 +2465,7 @@ struct ToRawTransactions {
       transactions.push_back(std::move(raw_transaction));
     }
 
-    return transactions;
+    return std::move(transactions);
   }
 };
 
