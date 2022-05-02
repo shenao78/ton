@@ -1291,6 +1291,7 @@ void parse_func_def(Lexer& lex) {
 std::string func_ver_test = func_version;
 
 void parse_pragma(Lexer& lex) {
+  auto pragma = lex.cur();
   lex.next();
   if (lex.tp() != _Ident) {
     lex.expect(_Ident, "pragma name expected");
@@ -1301,6 +1302,7 @@ void parse_pragma(Lexer& lex) {
     bool negate = !pragma_name.compare("not-version");
     char op = '='; bool eq = false;
     int sem_ver[3] = {0, 0, 0};
+    char segs = 1;
     if (lex.tp() == _Number) {
       sem_ver[0] = std::stoi(lex.cur().str);
     } else if (lex.tp() == _Ident) {
@@ -1309,36 +1311,38 @@ void parse_pragma(Lexer& lex) {
       if ((ch1 == '>') || (ch1 == '<') || (ch1 == '=') || (ch1 == '^')) {
         op = ch1;
       } else {
-        throw src::Fatal(std::string("unexpected comparator operation"));
+        lex.cur().error("unexpected comparator operation");
       }
       if (id1.length() < 2) {
-        throw src::Fatal{std::string("expected number after comparator")};
+        lex.cur().error("expected number after comparator");
       }
       if (id1[1] == '=') {
         eq = true;
         if (id1.length() < 3) {
-          throw src::Fatal{std::string("expected number after comparator")};
+          lex.cur().error("expected number after comparator");
         }
         sem_ver[0] = std::stoi(id1.substr(2));
       } else {
         sem_ver[0] = std::stoi(id1.substr(1));
       }
     } else {
-      throw src::Fatal{std::string("expected semver with optional comparator")};
+      lex.cur().error("expected semver with optional comparator");
     }
     lex.next();
     if (lex.tp() != ';') {
       if (lex.tp() != _Ident || lex.cur().str[0] != '.') {
-        throw src::Fatal{std::string("invalid semver format")};
+        lex.cur().error("invalid semver format");
       }
       sem_ver[1] = std::stoi(lex.cur().str.substr(1));
+      segs = 2;
       lex.next();
     }
     if (lex.tp() != ';') {
       if (lex.tp() != _Ident || lex.cur().str[0] != '.') {
-        throw src::Fatal{std::string("invalid semver format")};
+        lex.cur().error("invalid semver format");
       }
       sem_ver[2] = std::stoi(lex.cur().str.substr(1));
+      segs = 3;
       lex.next();
     }
     // End reading semver from source code
@@ -1363,7 +1367,6 @@ void parse_pragma(Lexer& lex) {
       if (idx < 2)
         semver_expr += '.';
     }
-    src::Fatal exc{std::string("FunC version ") + func_ver_test + " does not satisfy condition " + semver_expr};
     bool match = true;
     switch (op) {
       case '=':
@@ -1390,24 +1393,24 @@ void parse_pragma(Lexer& lex) {
         }
         break;
       case '^':
-        if ((func_ver[0] != sem_ver[0]) ||
-            (func_ver[1] != sem_ver[1]) ||
-            (func_ver[2] <  sem_ver[2])) {
+        if ( ((segs == 3) && ((func_ver[0] != sem_ver[0]) || (func_ver[1] != sem_ver[1]) || (func_ver[2] < sem_ver[2])))
+          || ((segs == 2) && ((func_ver[0] != sem_ver[0]) || (func_ver[1] < sem_ver[1])))
+          || ((segs == 1) && ((func_ver[0] < sem_ver[0]))) ) {
           match = false;
         }
         break;
     }
     if ((match && negate) || (!match && !negate)) {
-      throw exc;
+      pragma.error(std::string("FunC version ") + func_ver_test + " does not satisfy condition " + semver_expr);
     }
   } else if (!pragma_name.compare("test-version-set")) {
     if (lex.tp() != _String) {
-      throw src::Fatal(std::string("version string expected"));
+      lex.cur().error("version string expected");
     }
     func_ver_test = lex.cur().str;
     lex.next();
   } else {
-    throw src::Fatal{std::string{"unknown pragma `"} + pragma_name + "`"};
+    lex.cur().error(std::string{"unknown pragma `"} + pragma_name + "`");
   }
   lex.expect(';');
 }
