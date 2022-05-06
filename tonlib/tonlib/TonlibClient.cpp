@@ -2302,9 +2302,10 @@ struct ToRawTransactions {
           return td::Status::Error("Failed to unpack CommonMsgInfo::ext_out_msg_info");
         }
         TRY_RESULT(src, to_std_address(msg_info.src));
+        auto created_lt = static_cast<td::int64>(msg_info.created_lt);
         return tonlib_api::make_object<tonlib_api::raw_message>(
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
-            tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, 0, std::move(body_hash), get_data(src));
+            tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, created_lt, std::move(body_hash), get_data(src));
       }
     }
 
@@ -2349,7 +2350,7 @@ struct ToRawTransactions {
 
       if (trans.outmsg_cnt != 0) {
         vm::Dictionary dict{trans.r1.out_msgs, 15};
-        for (int x = 0; x < trans.outmsg_cnt && x < 100; x++) {
+        for (int x = 0; x < trans.outmsg_cnt; x++) {
           TRY_RESULT(out_msg, to_raw_message(dict.lookup_ref(td::BitArray<15>{x})));
           fees += out_msg->fwd_fee_;
           fees += out_msg->ihr_fee_;
@@ -3436,7 +3437,8 @@ td::Result<vm::StackEntry> from_tonlib_api(tonlib_api::tvm_StackEntry& entry) {
           [&](tonlib_api::tvm_stackEntryUnsupported& cell) { return td::Status::Error("Unsuppored stack entry"); },
           [&](tonlib_api::tvm_stackEntrySlice& cell) -> td::Result<vm::StackEntry> {
             TRY_RESULT(res, vm::std_boc_deserialize(cell.slice_->bytes_));
-            return vm::StackEntry{std::move(res)};
+            auto slice = vm::load_cell_slice_ref(std::move(res));
+            return vm::StackEntry{std::move(slice)};
           },
           [&](tonlib_api::tvm_stackEntryCell& cell) -> td::Result<vm::StackEntry> {
             TRY_RESULT(res, vm::std_boc_deserialize(cell.cell_->bytes_));
@@ -4349,6 +4351,7 @@ td::Status TonlibClient::do_request(const tonlib_api::blocks_getBlockHeader& req
                                   header.id_ = to_tonlib_api(blk_id);
                                   header.global_id_ = blk.global_id;
                                   header.version_ = info.version;
+                                  header.flags_ = info.flags;
                                   header.after_merge_ = info.after_merge;
                                   header.after_split_ = info.after_split;
                                   header.before_split_ = info.before_split;
@@ -4359,6 +4362,8 @@ td::Status TonlibClient::do_request(const tonlib_api::blocks_getBlockHeader& req
                                   header.min_ref_mc_seqno_ = info.min_ref_mc_seqno;
                                   header.start_lt_ = info.start_lt;
                                   header.end_lt_ = info.end_lt;
+                                  header.gen_utime_ = info.gen_utime;
+                                  header.is_key_block_ = info.key_block;
                                   header.vert_seqno_ = info.vert_seq_no;
                                   if(!info.not_master) {
                                    header.prev_key_block_seqno_ = info.prev_key_block_seqno;
