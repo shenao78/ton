@@ -55,11 +55,7 @@ raw.message source:accountAddress destination:accountAddress value:int64 fwd_fee
 raw.transaction utime:int53 data:bytes transaction_id:internal.transactionId fee:int64 storage_fee:int64 other_fee:int64 in_msg:raw.message out_msgs:vector<raw.message> = raw.Transaction;
 raw.transactions transactions:vector<raw.transaction> previous_transaction_id:internal.transactionId = raw.Transactions;
 
-<<<<<<< HEAD
 raw.extMessageInfo hash:bytes = raw.ExtMessageInfo;
-=======
-raw.extMessageInfo body_hash:bytes = raw.ExtMessageInfo;
->>>>>>> return msg body hash on raw.sendMessage
 
 pchan.config alice_public_key:string alice_address:accountAddress bob_public_key:string bob_address:accountAddress init_timeout:int32 close_timeout:int32 channel_id:int64 = pchan.Config;
 
