@@ -2926,7 +2926,7 @@ struct ToRawTransactions {
         return tonlib_api::make_object<tonlib_api::raw_message>(
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
             tonlib_api::make_object<tonlib_api::accountAddress>(std::move(dest)), balance, fwd_fee, ihr_fee, created_lt,
-            std::move(body_hash), get_data(src));
+            std::move(body_hash), get_data(src), msg_info.ihr_disabled, msg_info.bounce, msg_info.bounced, -1);
       }
       case block::gen::CommonMsgInfo::ext_in_msg_info: {
         block::gen::CommonMsgInfo::Record_ext_in_msg_info msg_info;
@@ -2937,7 +2937,7 @@ struct ToRawTransactions {
         return tonlib_api::make_object<tonlib_api::raw_message>(
             tonlib_api::make_object<tonlib_api::accountAddress>(),
             tonlib_api::make_object<tonlib_api::accountAddress>(std::move(dest)), 0, 0, 0, 0, std::move(body_hash),
-            get_data(""));
+            get_data(""), -1, -1, -1, to_balance(msg_info.import_fee).move_as_ok());
       }
       case block::gen::CommonMsgInfo::ext_out_msg_info: {
         block::gen::CommonMsgInfo::Record_ext_out_msg_info msg_info;
@@ -2948,7 +2948,7 @@ struct ToRawTransactions {
         auto created_lt = static_cast<td::int64>(msg_info.created_lt);
         return tonlib_api::make_object<tonlib_api::raw_message>(
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
-            tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, created_lt, std::move(body_hash), get_data(src));
+            tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, created_lt, std::move(body_hash), get_data(src), -1, -1, -1, -1);
       }
     }
 
