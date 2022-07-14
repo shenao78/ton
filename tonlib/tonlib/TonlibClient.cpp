@@ -2366,7 +2366,7 @@ auto to_any_promise(td::Promise<td::Unit>&& promise) {
 }
 
 td::Status TonlibClient::do_request(const tonlib_api::raw_sendMessage& request,
-                                    td::Promise<object_ptr<tonlib_api::raw_extMessageInfo>>&& promise) {
+                                    td::Promise<object_ptr<tonlib_api::ok>>&& promise) {
   TRY_RESULT_PREFIX(body, vm::std_boc_deserialize(request.body_), TonlibError::InvalidBagOfCells("body"));
   std::ostringstream os;
   block::gen::t_Message_Any.print_ref(os, body);
