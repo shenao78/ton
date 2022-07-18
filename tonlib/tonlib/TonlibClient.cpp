@@ -2857,6 +2857,7 @@ struct ToRawTransactions {
     }
     auto body_cell = vm::CellBuilder().append_cellslice(*body).finalize();
     auto body_hash = body_cell->get_hash().as_slice().str();
+    auto msg_hash = cell->get_hash().as_slice().str();
 
     td::Ref<vm::Cell> init_state_cell;
     auto& init_state_cs = message.init.write();
@@ -2924,6 +2925,7 @@ struct ToRawTransactions {
         auto created_lt = static_cast<td::int64>(msg_info.created_lt);
 
         return tonlib_api::make_object<tonlib_api::raw_message>(
+            msg_hash,
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
             tonlib_api::make_object<tonlib_api::accountAddress>(std::move(dest)), balance, fwd_fee, ihr_fee, created_lt,
             std::move(body_hash), get_data(src), msg_info.ihr_disabled, msg_info.bounce, msg_info.bounced, -1);
@@ -2935,6 +2937,7 @@ struct ToRawTransactions {
         }
         TRY_RESULT(dest, to_std_address(msg_info.dest));
         return tonlib_api::make_object<tonlib_api::raw_message>(
+            msg_hash,
             tonlib_api::make_object<tonlib_api::accountAddress>(),
             tonlib_api::make_object<tonlib_api::accountAddress>(std::move(dest)), 0, 0, 0, 0, std::move(body_hash),
             get_data(""), -1, -1, -1, to_balance(msg_info.import_fee).move_as_ok());
@@ -2947,6 +2950,7 @@ struct ToRawTransactions {
         TRY_RESULT(src, to_std_address(msg_info.src));
         auto created_lt = static_cast<td::int64>(msg_info.created_lt);
         return tonlib_api::make_object<tonlib_api::raw_message>(
+            msg_hash,
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
             tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, created_lt, std::move(body_hash), get_data(src), -1, -1, -1, -1);
       }
