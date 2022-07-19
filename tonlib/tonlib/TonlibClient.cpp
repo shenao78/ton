@@ -2366,11 +2366,19 @@ auto to_any_promise(td::Promise<td::Unit>&& promise) {
 }
 
 td::Status TonlibClient::do_request(const tonlib_api::raw_sendMessage& request,
-                                    td::Promise<object_ptr<tonlib_api::raw_extMessageInfo>>&& promise) {
+                                    td::Promise<object_ptr<tonlib_api::ok>>&& promise) {
   TRY_RESULT_PREFIX(body, vm::std_boc_deserialize(request.body_), TonlibError::InvalidBagOfCells("body"));
   std::ostringstream os;
   block::gen::t_Message_Any.print_ref(os, body);
   LOG(ERROR) << os.str();
+  auto body_hash = body->get_hash().as_slice().str();
+  make_request(int_api::SendMessage{std::move(body)}, to_any_promise(std::move(promise)));
+  return td::Status::OK();
+}
+
+td::Status TonlibClient::do_request(const tonlib_api::raw_sendMessageReturnHash& request,
+                                    td::Promise<object_ptr<tonlib_api::raw_extMessageInfo>>&& promise) {
+  TRY_RESULT_PREFIX(body, vm::std_boc_deserialize(request.body_), TonlibError::InvalidBagOfCells("body"));
   auto body_hash = body->get_hash().as_slice().str();
   make_request(int_api::SendMessage{std::move(body)}, 
     promise.wrap([body_hash = std::move(body_hash)](auto res) {
