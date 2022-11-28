@@ -10,7 +10,7 @@ set(TERMINAL_SOURCE
   terminal.h
   terminal.hpp
 )
-
+message("suffix: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 add_library(terminal STATIC ${TERMINAL_SOURCE})
 target_include_directories(terminal PUBLIC 
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 

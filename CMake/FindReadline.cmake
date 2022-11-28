@@ -1,3 +1,5 @@
+
+message("suffix: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 if (APPLE)
   find_path(READLINE_INCLUDE_DIR readline/readline.h /usr/local/opt/readline/include /opt/local/include /opt/include /usr/local/include /usr/include NO_DEFAULT_PATH)
 endif()

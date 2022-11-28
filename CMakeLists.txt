@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
 project(TON VERSION 0.5 LANGUAGES C CXX)
+message("global suffix: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(OPENSSL_USE_STATIC_LIBS TRUE)
 
@@ -521,6 +522,9 @@ target_link_libraries(test-ton-collator overlay tdutils tdactor adnl tl_api dht
 
 add_executable(test-http test/test-http.cpp)
 target_link_libraries(test-http PRIVATE tonhttp)
+
+add_executable(test-emulator test/test-td-main.cpp ${EMULATOR_TEST_SOURCE})
+target_link_libraries(test-emulator tdutils emulator)
 
 get_directory_property(HAS_PARENT PARENT_DIRECTORY)
 if (HAS_PARENT)
