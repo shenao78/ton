@@ -291,15 +291,17 @@ class AccountState {
   td::Result<tonlib_api::object_ptr<tonlib_api::raw_fullAccountState>> to_raw_fullAccountState() const {
     auto state = get_smc_state();
     std::string code;
+    std::string code_hash;
     if (state.code.not_null()) {
       code = to_bytes(state.code);
+      code_hash = state.code->get_hash().as_slice().str();
     }
     std::string data;
     if (state.data.not_null()) {
       data = to_bytes(state.data);
     }
     return tonlib_api::make_object<tonlib_api::raw_fullAccountState>(
-        get_balance(), std::move(code), std::move(data), to_transaction_id(raw().info), to_tonlib_api(raw().block_id),
+        get_balance(), std::move(code), std::move(code_hash), std::move(data), to_transaction_id(raw().info), to_tonlib_api(raw().block_id),
         raw().frozen_hash, get_sync_time());
   }
 
