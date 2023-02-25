@@ -2860,6 +2860,10 @@ struct ToRawTransactions {
     auto body_cell = vm::CellBuilder().append_cellslice(*body).finalize();
     auto body_hash = body_cell->get_hash().as_slice().str();
     auto msg_hash = cell->get_hash().as_slice().str();
+    
+    // td::Ref<vm::Cell> init_state_cell;
+    auto& init_state_cs = message.init.write();
+    bool has_init_state = init_state_cs.fetch_ulong(1) == 1;
 
     td::Ref<vm::Cell> init_state_cell;
     auto& init_state_cs = message.init.write();
@@ -2930,7 +2934,7 @@ struct ToRawTransactions {
             msg_hash,
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
             tonlib_api::make_object<tonlib_api::accountAddress>(std::move(dest)), balance, fwd_fee, ihr_fee, created_lt,
-            std::move(body_hash), get_data(src), msg_info.ihr_disabled, msg_info.bounce, msg_info.bounced, -1);
+            std::move(body_hash), get_data(src), msg_info.ihr_disabled, msg_info.bounce, msg_info.bounced, has_init_state, -1);
       }
       case block::gen::CommonMsgInfo::ext_in_msg_info: {
         block::gen::CommonMsgInfo::Record_ext_in_msg_info msg_info;
@@ -2942,7 +2946,7 @@ struct ToRawTransactions {
             msg_hash,
             tonlib_api::make_object<tonlib_api::accountAddress>(),
             tonlib_api::make_object<tonlib_api::accountAddress>(std::move(dest)), 0, 0, 0, 0, std::move(body_hash),
-            get_data(""), -1, -1, -1, to_balance(msg_info.import_fee).move_as_ok());
+            get_data(""), -1, -1, -1, has_init_state, to_balance(msg_info.import_fee).move_as_ok());
       }
       case block::gen::CommonMsgInfo::ext_out_msg_info: {
         block::gen::CommonMsgInfo::Record_ext_out_msg_info msg_info;
@@ -2954,7 +2958,7 @@ struct ToRawTransactions {
         return tonlib_api::make_object<tonlib_api::raw_message>(
             msg_hash,
             tonlib_api::make_object<tonlib_api::accountAddress>(src),
-            tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, created_lt, std::move(body_hash), get_data(src), -1, -1, -1, -1);
+            tonlib_api::make_object<tonlib_api::accountAddress>(), 0, 0, 0, created_lt, std::move(body_hash), get_data(src), -1, -1, -1, has_init_state, -1);
       }
     }
 
