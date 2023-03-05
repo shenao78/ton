@@ -71,6 +71,10 @@ class ArchiveManager : public td::actor::Actor {
 
   void start_up() override;
 
+  void try_catch_up_with_primary(td::Promise<td::Unit> promise);
+
+  void get_max_masterchain_seqno(td::Promise<int> promise);
+
   void begin_transaction();
   void commit_transaction();
   void set_async_mode(bool mode, td::Promise<td::Unit> promise);

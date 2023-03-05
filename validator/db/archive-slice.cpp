@@ -21,6 +21,7 @@
 #include "td/actor/MultiPromise.h"
 #include "validator/fabric.h"
 #include "td/db/RocksDb.h"
+#include "td/db/RocksDbSecondary.h"
 #include "ton/ton-io.hpp"
 #include "td/utils/port/path.h"
 #include "common/delay.h"
@@ -447,7 +448,7 @@ void ArchiveSlice::get_archive_id(BlockSeqno masterchain_seqno, td::Promise<td::
 void ArchiveSlice::start_up() {
   PackageId p_id{archive_id_, key_blocks_only_, temp_};
   std::string db_path = PSTRING() << db_root_ << p_id.path() << p_id.name() << ".index";
-  kv_ = std::make_shared<td::RocksDb>(td::RocksDb::open(db_path).move_as_ok());
+  kv_ = std::make_shared<td::RocksDbSecondary>(td::RocksDbSecondary::open(db_path).move_as_ok());
 
   std::string value;
   auto R2 = kv_->get("status", value);
@@ -498,6 +499,14 @@ void ArchiveSlice::start_up() {
       add_package(archive_id_, 0, 0);
     }
   }
+}
+
+td::Status ArchiveSlice::try_catch_up_with_primary() {
+  auto secondary = dynamic_cast<td::RocksDbSecondary *>(kv_.get());
+  if (secondary != nullptr) {
+    return secondary->try_catch_up_with_primary();
+  }
+  return td::Status::Error("it's not secondary db");
 }
 
 void ArchiveSlice::begin_transaction() {
@@ -756,6 +765,10 @@ void ArchiveSlice::truncate_shard(BlockSeqno masterchain_seqno, ShardIdFull shar
     g->last_idx_ = new_last_idx;
     kv_->set(key, serialize_tl_object(g, true)).ensure();
   }
+}
+
+void ArchiveSlice::get_max_masterchain_seqno(td::Promise<int> promise) {
+  promise.set_result(max_masterchain_seqno());
 }
 
 void ArchiveSlice::truncate(BlockSeqno masterchain_seqno, ConstBlockHandle handle, td::Promise<td::Unit> promise) {
