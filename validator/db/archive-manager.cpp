@@ -962,7 +962,7 @@ void ArchiveManager::get_max_masterchain_seqno(td::Promise<int> promise) {
   auto fd = get_file_desc_by_seqno(ton::AccountIdPrefixFull(ton::masterchainId, ton::shardIdAll), INT_MAX, false);
   auto R = td::PromiseCreator::lambda([SelfId = actor_id(this), promise = std::move(promise), fd = std::move(fd)](td::Result<td::Unit> R) mutable {
       if (R.is_error()) {
-        LOG(ERROR) << R.move_as_error();
+        promise.set_error(R.move_as_error());
       } else {
         td::actor::send_closure(fd->file, &ArchiveSlice::get_max_masterchain_seqno, std::move(promise));
       }
