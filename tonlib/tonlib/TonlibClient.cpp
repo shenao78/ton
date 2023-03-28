@@ -4447,6 +4447,7 @@ td::Status TonlibClient::do_request(const tonlib_api::smc_runGetMethod& request,
   args.set_balance(it->second->get_balance());
   args.set_now(it->second->get_sync_time());
   args.set_address(it->second->get_address());
+  args.set_limits(vm::GasLimits(2000000, 2000000));
 
   client_.with_last_config([self = this, smc = std::move(smc), args = std::move(args), promise = std::move(promise)
   ](td::Result<LastConfigState> r_state) mutable {
