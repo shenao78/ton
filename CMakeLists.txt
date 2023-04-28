@@ -464,6 +464,9 @@ target_link_libraries(test-tdactor PRIVATE tdactor ${CMAKE_THREAD_LIBS_INIT})
 add_executable(test-net test/test-td-main.cpp ${NET_TEST_SOURCE})
 target_link_libraries(test-net PRIVATE tdnet tdutils ${CMAKE_THREAD_LIBS_INIT})
 
+add_executable(test-emulator test/test-td-main.cpp ${EMULATOR_TEST_SOURCE})
+target_link_libraries(test-emulator tdutils emulator smc-envelope fift-lib)
+
 #BEGIN tonlib
 add_executable(test-tonlib ${TONLIB_ONLINE_TEST_SOURCE})
 target_link_libraries(test-tonlib tdutils tdactor adnllite tl_api ton_crypto ton_block tl_tonlib_api tonlib)

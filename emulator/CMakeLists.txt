@@ -22,6 +22,8 @@ set(EMULATOR_EMSCRIPTEN_SOURCE
   emulator-emscripten.cpp
 )
 
+set(EMULATOR_TEST_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/test/emulator-tests.cpp PARENT_SCOPE)
+
 include(GenerateExportHeader)
 
 add_library(emulator_static STATIC ${EMULATOR_STATIC_SOURCE})
