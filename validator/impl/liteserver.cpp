@@ -1825,43 +1825,6 @@ void LiteQuery::continue_getAllShardsInfo() {
   auto b = ton::create_serialize_tl_object<ton::lite_api::liteServer_allShardsInfo>(
       ton::create_tl_lite_block_id(base_blk_id_), proof_boc.move_as_ok(), data.move_as_ok());
   finish_query(std::move(b));
-
-  // LOG(INFO) << "completing getAllShardsInfo() query";
-  // Ref<vm::Cell> proof1, proof2;
-  // if (!make_mc_state_root_proof(proof1)) {
-  //   return;
-  // }
-  // vm::MerkleProofBuilder mpb{mc_state_->root_cell()};
-  // auto shards_dict = block::ShardConfig::extract_shard_hashes_dict(mpb.root());
-  // if (!shards_dict) {
-  //   fatal_error("cannot extract ShardHashes from last mc state");
-  //   return;
-  // }
-  // if (!mpb.extract_proof_to(proof2)) {
-  //   fatal_error("cannot construct Merkle proof for all shards dictionary");
-  //   return;
-  // }
-  // shards_dict = block::ShardConfig::extract_shard_hashes_dict(mc_state_->root_cell());
-  // vm::CellBuilder cb;
-  // Ref<vm::Cell> cell;
-  // if (!(std::move(shards_dict)->append_dict_to_bool(cb) && cb.finalize_to(cell))) {
-  //   fatal_error("cannot store ShardHashes from last mc state into a new cell");
-  //   return;
-  // }
-  // auto proof = vm::std_boc_serialize_multi({std::move(proof1), std::move(proof2)});
-  // if (proof.is_error()) {
-  //   fatal_error(proof.move_as_error());
-  //   return;
-  // }
-  // auto data = vm::std_boc_serialize(std::move(cell));
-  // if (data.is_error()) {
-  //   fatal_error(data.move_as_error());
-  //   return;
-  // }
-  // LOG(INFO) << "getAllShardInfo() query completed";
-  // auto b = ton::create_serialize_tl_object<ton::lite_api::liteServer_allShardsInfo>(
-  //     ton::create_tl_lite_block_id(base_blk_id_), proof.move_as_ok(), data.move_as_ok());
-  // finish_query(std::move(b));
 }
 
 void LiteQuery::perform_lookupBlock(BlockId blkid, int mode, LogicalTime lt, UnixTime utime) {
