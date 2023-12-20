@@ -5456,7 +5456,7 @@ td::Status TonlibClient::do_request(const tonlib_api::blocks_getShards& request,
                           }
                           auto ids = sh_conf.get_shard_hash_ids(true);
                           tonlib_api::blocks_shards shards;
-                          for (auto id : ids) {
+                          for (auto& id : ids) {
                             auto ref = sh_conf.get_shard_hash(ton::ShardIdFull(id));
                             if (ref.not_null()) {
                               shards.shards_.push_back(to_tonlib_api(ref->top_block_id()));
