@@ -4495,7 +4495,7 @@ void deep_library_search(std::set<td::Bits256>& set, std::set<vm::Cell::Hash>& v
 td::Status TonlibClient::do_request(const tonlib_api::smc_getLibraries& request,
                                     td::Promise<object_ptr<tonlib_api::smc_libraryResult>>&& promise) {
   if (request.library_list_.size() > 16) {
-    promise.set_error(TonlibError::Internal("too many libraries requested, 16 maximum"));
+    promise.set_error(TonlibError::InvalidField("library_list", ": too many libraries requested, 16 maximum"));
   }
   if (query_context_.block_id) {
     get_libs(query_context_.block_id.value(), request.library_list_, std::move(promise));
@@ -4567,26 +4567,29 @@ void TonlibClient::get_libs(ton::BlockIdExt blkid, std::vector<td::Bits256> libr
       }
 
       auto lib_it = std::find_if(libraries->result_.begin(), libraries->result_.end(), 
-                              [&hash](const auto& lib) { return !lib->hash_.bits().compare(hash.cbits(), 256); });
+                              [&hash](const auto& lib) { return lib->hash_.bits().equals(hash.cbits(), 256); });
       if (lib_it == libraries->result_.end()) {
           return TonlibError::Internal("library is found in proof but not in response");
       }
       auto& lib = *lib_it;
       auto contents = vm::std_boc_deserialize(lib->data_);
       if (!contents.is_ok() || contents.ok().is_null()) {
-          return TonlibError::Internal(PSLICE() << "library hash mismatch " << lib->hash_.to_hex());
+          return TonlibError::Internal(PSLICE() << "cannot deserialize library cell " << lib->hash_.to_hex());
       }
 
-      if (contents.ok()->get_hash().bits().compare(hash.cbits(), 256)) {
-          return TonlibError::Internal(PSLICE() << "library hash mismatch " << contents.ok()->get_hash().to_hex() << " != " << hash.to_hex());
+      if (!contents.ok()->get_hash().bits().equals(hash.cbits(), 256)) {
+          return TonlibError::Internal(PSLICE() << "library hash mismatch data " << contents.ok()->get_hash().to_hex() << " != requested " << hash.to_hex());
       }
 
+      if (contents.ok()->get_hash() != libres->get_hash()) {
+        return TonlibError::Internal(PSLICE() << "library hash mismatch data " << lib->hash_.to_hex() << " != proof " << libres->get_hash().to_hex());
+      }
+      
       result_entries.push_back(tonlib_api::make_object<tonlib_api::smc_libraryEntry>(lib->hash_, lib->data_.as_slice().str()));
       self->libraries.set_ref(lib->hash_, contents.move_as_ok());
       LOG(DEBUG) << "registered library " << lib->hash_.to_hex();
     }
     self->store_libs_to_disk();
-    sort(result_entries.begin(), result_entries.end());
     return tonlib_api::make_object<tonlib_api::smc_libraryResult>(std::move(result_entries));
   }));
 }
