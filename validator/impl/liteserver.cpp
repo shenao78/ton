@@ -943,7 +943,7 @@ void LiteQuery::continue_getLibrariesV2(std::vector<td::Bits256> library_list) {
     return;
   }
 
-  vm::MerkleProofBuilder pb{state_->root_cell()};
+  vm::MerkleProofBuilder pb{mc_state_->root_cell()};
 
   auto rconfig = block::ConfigInfo::extract_config(pb.root(), block::ConfigInfo::needLibraries);
   if (rconfig.is_error()) {
