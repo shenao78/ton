@@ -4498,20 +4498,20 @@ td::Status TonlibClient::do_request(const tonlib_api::smc_getLibraries& request,
     promise.set_error(TonlibError::InvalidField("library_list", ": too many libraries requested, 16 maximum"));
   }
   if (query_context_.block_id) {
-    get_libs(query_context_.block_id.value(), request.library_list_, std::move(promise));
+    get_libraries(query_context_.block_id.value(), request.library_list_, std::move(promise));
   } else {
     client_.with_last_block([this, promise = std::move(promise), library_list = request.library_list_](td::Result<LastBlockState> r_last_block) mutable {       
       if (r_last_block.is_error()) {
         promise.set_error(r_last_block.move_as_error_prefix(TonlibError::Internal("get last block failed ")));
       } else {
-        this->get_libs(r_last_block.move_as_ok().last_block_id, library_list, std::move(promise));
+        this->get_libraries(r_last_block.move_as_ok().last_block_id, library_list, std::move(promise));
       }
     });
   }
   return td::Status::OK();
 }
 
-void TonlibClient::get_libs(ton::BlockIdExt blkid, std::vector<td::Bits256> library_list, td::Promise<object_ptr<tonlib_api::smc_libraryResult>>&& promise) {
+void TonlibClient::get_libraries(ton::BlockIdExt blkid, std::vector<td::Bits256> library_list, td::Promise<object_ptr<tonlib_api::smc_libraryResult>>&& promise) {
   sort(library_list.begin(), library_list.end());
   library_list.erase(unique(library_list.begin(), library_list.end()), library_list.end());
 
@@ -4532,9 +4532,9 @@ void TonlibClient::get_libs(ton::BlockIdExt blkid, std::vector<td::Bits256> libr
     return;
   }
 
-  client_.send_query(ton::lite_api::liteServer_getLibrariesV2(ton::create_tl_lite_block_id(blkid), std::move(not_cached_hashes)),
+  client_.send_query(ton::lite_api::liteServer_getLibrariesWithProof(ton::create_tl_lite_block_id(blkid), std::move(not_cached_hashes)),
                      promise.wrap([self=this, blkid, result_entries = std::move(result_entries), not_cached_hashes]
-                                  (td::Result<ton::lite_api::object_ptr<ton::lite_api::liteServer_libraryResultV2>> r_libraries) mutable 
+                                  (td::Result<ton::lite_api::object_ptr<ton::lite_api::liteServer_libraryResultWithProof>> r_libraries) mutable 
                                     -> td::Result<tonlib_api::object_ptr<tonlib_api::smc_libraryResult>> {
     if (r_libraries.is_error()) {
       LOG(WARNING) << "cannot obtain found libraries: " << r_libraries.move_as_error().to_string();

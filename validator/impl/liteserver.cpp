@@ -210,8 +210,8 @@ void LiteQuery::start_up() {
           [&](lite_api::liteServer_getLibraries& q) {
             this->perform_getLibraries(q.library_list_);
           },
-          [&](lite_api::liteServer_getLibrariesV2& q) {
-            this->perform_getLibrariesV2(ton::create_block_id(q.id_), q.library_list_);
+          [&](lite_api::liteServer_getLibrariesWithProof& q) {
+            this->perform_getLibrariesWithProof(ton::create_block_id(q.id_), q.library_list_);
           },
           [&](lite_api::liteServer_getShardBlockProof& q) {
             this->perform_getShardBlockProof(create_block_id(q.id_));
@@ -921,8 +921,8 @@ void LiteQuery::continue_getLibraries(Ref<ton::validator::MasterchainState> mc_s
   finish_query(std::move(b));
 }
 
-void LiteQuery::perform_getLibrariesV2(BlockIdExt blkid, std::vector<td::Bits256> library_list) {
-  LOG(INFO) << "started a getLibrariesV2(<list of " << library_list.size() << " parameters>) liteserver query";
+void LiteQuery::perform_getLibrariesWithProof(BlockIdExt blkid, std::vector<td::Bits256> library_list) {
+  LOG(INFO) << "started a getLibrariesWithProof(<list of " << library_list.size() << " parameters>) liteserver query";
   if (library_list.size() > 16) {
     LOG(INFO) << "too many libraries requested, returning only first 16";
     library_list.resize(16);
@@ -930,11 +930,11 @@ void LiteQuery::perform_getLibrariesV2(BlockIdExt blkid, std::vector<td::Bits256
   sort( library_list.begin(), library_list.end() );
   library_list.erase( unique( library_list.begin(), library_list.end() ), library_list.end() );
 
-  set_continuation([this, library_list]() -> void { continue_getLibrariesV2(library_list); });
+  set_continuation([this, library_list]() -> void { continue_getLibrariesWithProof(library_list); });
   request_mc_block_data_state(blkid);
 }
 
-void LiteQuery::continue_getLibrariesV2(std::vector<td::Bits256> library_list) {
+void LiteQuery::continue_getLibrariesWithProof(std::vector<td::Bits256> library_list) {
   LOG(INFO) << "obtained masterchain block = " << base_blk_id_.to_str();
   CHECK(mc_state_.not_null());
 
@@ -996,7 +996,7 @@ void LiteQuery::continue_getLibrariesV2(std::vector<td::Bits256> library_list) {
     return;
   }
 
-  auto b = ton::create_serialize_tl_object<ton::lite_api::liteServer_libraryResultV2>(ton::create_tl_lite_block_id(base_blk_id_), std::move(result), 
+  auto b = ton::create_serialize_tl_object<ton::lite_api::liteServer_libraryResultWithProof>(ton::create_tl_lite_block_id(base_blk_id_), std::move(result), 
                     state_proof_boc.move_as_ok(), data_proof_boc.move_as_ok());
   finish_query(std::move(b));
 }
