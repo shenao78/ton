@@ -402,7 +402,6 @@ class TonlibClient : public td::actor::Actor {
 
   void proxy_request(td::int64 query_id, std::string data);
 
-  std::mutex libs_mutex_;
   void load_libs_from_disk();
   void store_libs_to_disk();
 

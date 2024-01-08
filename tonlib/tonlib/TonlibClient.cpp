@@ -5849,7 +5849,6 @@ td::Status TonlibClient::do_request(const tonlib_api::blocks_getShardBlockProof&
 }
 
 void TonlibClient::load_libs_from_disk() {
-  std::lock_guard<std::mutex> guard(libs_mutex_);
   LOG(DEBUG) << "loading libraries from disk cache";
   auto r_data = kv_->get("tonlib.libcache");
   if (r_data.is_error()) {
@@ -5866,7 +5865,6 @@ void TonlibClient::load_libs_from_disk() {
 }
 
 void TonlibClient::store_libs_to_disk() {  // NB: Dictionary.get_root_cell does not compute_root, and it is protected
-  std::lock_guard<std::mutex> guard(libs_mutex_);
   kv_->set("tonlib.libcache", vm::std_boc_serialize(vm::CellBuilder().append_cellslice(libraries.get_root())
                                                         .finalize()).move_as_ok().as_slice());
 
