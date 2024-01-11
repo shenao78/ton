@@ -496,7 +496,7 @@ void LiteQuery::continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt b
   if (!check_mc_block_contains_shard_block(mpb.root(), blkid, shard_top_blkid)) {
     // try next mc block
     ton::AccountIdPrefixFull pfx{ton::masterchainId, ton::shardIdAll};
-    td::actor::send_closure_later(manager_, &ValidatorManager::get_block_by_seqno_from_db, pfx, mc_block_data->block_id().id.seqno + 1,
+    td::actor::send_closure_later(manager_, &ValidatorManager::get_block_by_seqno_from_db, pfx, mc_block->block_id().id.seqno + 1,
                       [blkid, client_mc_blkid, limit, header_proof=std::move(header_proof), manager = manager_, Self = actor_id(this)](td::Result<ConstBlockHandle> R) mutable {
       if (R.is_error()) {
         td::actor::send_closure(Self, &LiteQuery::abort_query, R.move_as_error());
@@ -521,7 +521,7 @@ void LiteQuery::continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt b
     return;
   }
 
-  continue_lookupBlockWithProof_getShardBlockData(blkid, client_mc_blkid, std::move(header_proof), mc_block_data->block_id(), mc_shard_proof_data.move_as_ok(), shard_top_blkid);
+  continue_lookupBlockWithProof_getShardBlockData(blkid, client_mc_blkid, std::move(header_proof), mc_block->block_id(), mc_shard_proof_data.move_as_ok(), shard_top_blkid);
 }
 
 void LiteQuery::continue_lookupBlockWithProof_getShardBlockData(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, BlockIdExt shard_top_blkid) {
