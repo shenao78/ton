@@ -449,7 +449,7 @@ void LiteQuery::continue_lookupBlockWithProof_getHeaderProof(BlockIdExt blkid, B
     });
   } else {
     td::actor::send_closure(actor_id(this), &LiteQuery::continue_lookupBlock_getClientMcBlockState, blkid, client_mc_blkid,
-                proof_data.move_as_ok(), td::BufferSlice(), std::vector<td::Ref<vm::Cell>>());
+                proof_data.move_as_ok(), blkid, td::BufferSlice(), std::vector<td::Ref<vm::Cell>>());
     return;
   }
 }
@@ -484,19 +484,19 @@ bool LiteQuery::check_mc_block_contains_shard_block(td::Ref<vm::Cell> mcref_bloc
   return false;
 }
 
-void LiteQuery::continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::Ref<BlockData> mcref_block_data, int limit) {
+void LiteQuery::continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::Ref<BlockData> mc_block_data, int limit) {
   if (!limit) {
     fatal_error("checked 10 blocks after block.mcref and couldn't find shard block");
     return;
   }
 
-  auto mc_block = Ref<BlockQ>(std::move(mcref_block_data));
+  auto mc_block = Ref<BlockQ>(std::move(mc_block_data));
   vm::MerkleProofBuilder mpb{mc_block->root_cell()};
   BlockIdExt shard_top_blkid;
   if (!check_mc_block_contains_shard_block(mpb.root(), blkid, shard_top_blkid)) {
     // try next mc block
     ton::AccountIdPrefixFull pfx{ton::masterchainId, ton::shardIdAll};
-    td::actor::send_closure_later(manager_, &ValidatorManager::get_block_by_seqno_from_db, pfx, mcref_block_data->block_id().id.seqno + 1,
+    td::actor::send_closure_later(manager_, &ValidatorManager::get_block_by_seqno_from_db, pfx, mc_block_data->block_id().id.seqno + 1,
                       [blkid, client_mc_blkid, limit, header_proof=std::move(header_proof), manager = manager_, Self = actor_id(this)](td::Result<ConstBlockHandle> R) mutable {
       if (R.is_error()) {
         td::actor::send_closure(Self, &LiteQuery::abort_query, R.move_as_error());
@@ -521,46 +521,46 @@ void LiteQuery::continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt b
     return;
   }
 
-  continue_lookupBlockWithProof_getShardBlockData(blkid, client_mc_blkid, std::move(header_proof), mc_shard_proof_data.move_as_ok(), shard_top_blkid);
+  continue_lookupBlockWithProof_getShardBlockData(blkid, client_mc_blkid, std::move(header_proof), mc_block_data->block_id(), mc_shard_proof_data.move_as_ok(), shard_top_blkid);
 }
 
-void LiteQuery::continue_lookupBlockWithProof_getShardBlockData(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::BufferSlice mc_shard_proof_data, BlockIdExt shard_top_blkid) {
+void LiteQuery::continue_lookupBlockWithProof_getShardBlockData(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, BlockIdExt shard_top_blkid) {
   if (shard_top_blkid == blkid) {
     td::actor::send_closure(actor_id(this), &LiteQuery::continue_lookupBlock_getClientMcBlockState, blkid, client_mc_blkid,
-                std::move(header_proof), std::move(mc_shard_proof_data), std::vector<td::Ref<vm::Cell>>());
+                std::move(header_proof), mc_blkid, std::move(mc_shard_proof_data), std::vector<td::Ref<vm::Cell>>());
     return;
   }
-  get_block_handle_checked(shard_top_blkid, [blkid, client_mc_blkid, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), 
+  get_block_handle_checked(shard_top_blkid, [=, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), 
                                                         manager = manager_, Self = actor_id(this)](td::Result<ConstBlockHandle> R) mutable {
     if (R.is_error()) {
       td::actor::send_closure(Self, &LiteQuery::abort_query, R.move_as_error());
       return;
     }
     td::actor::send_closure(manager, &ValidatorManager::get_block_data_from_db, R.move_as_ok(), 
-                            [blkid, client_mc_blkid, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), Self](td::Result<Ref<BlockData>> res) mutable {
+                            [=, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data)](td::Result<Ref<BlockData>> res) mutable {
       if (res.is_error()) {
         td::actor::send_closure(Self, &LiteQuery::abort_query, res.move_as_error());
         return;
       }
       td::actor::send_closure(Self, &LiteQuery::continue_lookupBlock_findTargetBlockInShardPrevBlocks, blkid, client_mc_blkid,
-                                    std::move(header_proof), std::move(mc_shard_proof_data), std::vector<td::Ref<vm::Cell>>(), res.move_as_ok());
+                                    std::move(header_proof), mc_blkid, std::move(mc_shard_proof_data), std::vector<td::Ref<vm::Cell>>(), res.move_as_ok());
     });
   });
 }
 
-void LiteQuery::continue_lookupBlock_findTargetBlockInShardPrevBlocks(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::BufferSlice mc_shard_proof_data, 
+void LiteQuery::continue_lookupBlock_findTargetBlockInShardPrevBlocks(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, 
                                       std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs, td::Ref<BlockData> shard_block_data) {
   if (shard_block_data->block_id() == blkid) {
     td::actor::send_closure(actor_id(this), &LiteQuery::continue_lookupBlock_getClientMcBlockState, blkid, client_mc_blkid,
-                std::move(header_proof), std::move(mc_shard_proof_data), std::move(shard_prev_blocks_proofs));
+                std::move(header_proof), mc_blkid, std::move(mc_shard_proof_data), std::move(shard_prev_blocks_proofs));
     return;
   }
   auto block_root = shard_block_data->root_cell();
   vm::MerkleProofBuilder mpb{block_root};
   std::vector<ton::BlockIdExt> prev;
-  ton::BlockIdExt mc_blkid;
+  ton::BlockIdExt mc_ref_blkid;
   bool after_split;
-  auto res = block::unpack_block_prev_blk_ext(block_root, shard_block_data->block_id(), prev, mc_blkid, after_split);
+  auto res = block::unpack_block_prev_blk_ext(block_root, shard_block_data->block_id(), prev, mc_ref_blkid, after_split);
   if (res.is_error()) {
     fatal_error(res.move_as_error());
     return;
@@ -573,26 +573,26 @@ void LiteQuery::continue_lookupBlock_findTargetBlockInShardPrevBlocks(BlockIdExt
   shard_prev_blocks_proofs.push_back(prev_blk_proof.move_as_ok());
 
   for (const auto& prev_block : prev) {
-    get_block_handle_checked(prev_block, [blkid, client_mc_blkid, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), 
+    get_block_handle_checked(prev_block, [=, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), 
                                           shard_prev_blocks_proofs=std::move(shard_prev_blocks_proofs), manager = manager_, Self = actor_id(this)](td::Result<ConstBlockHandle> R) mutable {
         if (R.is_error()) {
           td::actor::send_closure(Self, &LiteQuery::abort_query, R.move_as_error());
           return;
         }
         td::actor::send_closure(manager, &ValidatorManager::get_block_data_from_db, R.move_as_ok(), 
-                                [blkid, client_mc_blkid, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), 
-                                 shard_prev_blocks_proofs=std::move(shard_prev_blocks_proofs), Self](td::Result<Ref<BlockData>> res) mutable {
+                                [=, header_proof=std::move(header_proof), mc_shard_proof_data=std::move(mc_shard_proof_data), 
+                                 shard_prev_blocks_proofs=std::move(shard_prev_blocks_proofs)](td::Result<Ref<BlockData>> res) mutable {
           if (res.is_error()) {
             td::actor::send_closure(Self, &LiteQuery::abort_query, res.move_as_error());
             return;
           }
-          td::actor::send_closure(Self, &LiteQuery::continue_lookupBlock_findTargetBlockInShardPrevBlocks, blkid, client_mc_blkid, std::move(header_proof), std::move(mc_shard_proof_data), std::move(shard_prev_blocks_proofs), res.move_as_ok());
+          td::actor::send_closure(Self, &LiteQuery::continue_lookupBlock_findTargetBlockInShardPrevBlocks, blkid, client_mc_blkid, std::move(header_proof), mc_blkid, std::move(mc_shard_proof_data), std::move(shard_prev_blocks_proofs), res.move_as_ok());
         });
     });
   }
 }
 
-void LiteQuery::continue_lookupBlock_getClientMcBlockState(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::BufferSlice mc_shard_proof_data, 
+void LiteQuery::continue_lookupBlock_getClientMcBlockState(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, 
                                       std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs) {
   get_block_handle_checked(client_mc_blkid, [=, header_proof = std::move(header_proof), mc_shard_proof_data = std::move(mc_shard_proof_data), Self = actor_id(this), manager = manager_](td::Result<ConstBlockHandle> R) mutable {
     if (R.is_error()) {
@@ -606,16 +606,16 @@ void LiteQuery::continue_lookupBlock_getClientMcBlockState(BlockIdExt blkid, Blo
         td::actor::send_closure(Self, &LiteQuery::abort_query, res.move_as_error());
       } else {
         td::actor::send_closure_later(Self, &LiteQuery::continue_lookupBlock_getMcBlockPrev, blkid, client_mc_blkid,
-                                      std::move(header_proof), std::move(mc_shard_proof_data), 
+                                      std::move(header_proof), mc_blkid, std::move(mc_shard_proof_data), 
                                       std::move(shard_prev_blocks_proofs), res.move_as_ok());
       }
     });
   });
 }
 
-void LiteQuery::continue_lookupBlock_getMcBlockPrev(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::BufferSlice mc_shard_proof_data, 
-                                      std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs, Ref<ShardState> mc_state)  {
-  auto mc_state_r = Ref<MasterchainStateQ>(std::move(mc_state));
+void LiteQuery::continue_lookupBlock_getMcBlockPrev(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, 
+                                      std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs, Ref<ShardState> client_mc_state)  {
+  auto mc_state_r = Ref<MasterchainStateQ>(std::move(client_mc_state));
   vm::MerkleProofBuilder mpb{mc_state_r->root_cell()};
 
   auto prev_blocks_dict = block::get_prev_blocks_dict(mpb.root());
@@ -623,12 +623,7 @@ void LiteQuery::continue_lookupBlock_getMcBlockPrev(BlockIdExt blkid, BlockIdExt
     fatal_error(td::Status::Error("cannot extract prev_blocks from mc state"));
     return;
   }
-  if (!block::check_old_mc_block_id(*prev_blocks_dict, client_mc_blkid)) {
-    int n = 0;
-    for (const auto &x : *prev_blocks_dict) {
-      n++;
-    }
-    LOG(ERROR) << "prev_blocks_dict contains " << n << " entries";
+  if (!block::check_old_mc_block_id(*prev_blocks_dict, mc_blkid)) {
     fatal_error(td::Status::Error("client mc blkid is not in prev_blocks"));
     return;
   }
