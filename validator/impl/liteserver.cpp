@@ -645,7 +645,7 @@ void LiteQuery::continue_lookupBlock_getMcBlockPrev(BlockIdExt blkid, BlockIdExt
   // liteServer.lookupBlockResult id:tonNode.blockIdExt mode:# mc_block_proof:bytes shard_proof:bytes prev_block_proof:bytes header:bytes = liteServer.LookupBlockResult;
   auto b = ton::create_serialize_tl_object<ton::lite_api::liteServer_lookupBlockResult>(ton::create_tl_lite_block_id(blkid),
                                                 mode_, client_mc_blk_proof.move_as_ok(), std::move(mc_shard_proof_data), prev_block_proof.move_as_ok(), std::move(header_proof));
-  
+  finish_query(std::move(b));
 }
 
 void LiteQuery::continue_getBlockHeader(BlockIdExt blkid, int mode, Ref<ton::validator::BlockData> block) {
