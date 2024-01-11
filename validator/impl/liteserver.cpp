@@ -624,6 +624,11 @@ void LiteQuery::continue_lookupBlock_getMcBlockPrev(BlockIdExt blkid, BlockIdExt
     return;
   }
   if (!block::check_old_mc_block_id(*prev_blocks_dict, client_mc_blkid)) {
+    int n = 0;
+    for (const auto &x : *prev_blocks_dict) {
+      n++;
+    }
+    LOG(ERROR) << "prev_blocks_dict contains " << n << " entries";
     fatal_error(td::Status::Error("client mc blkid is not in prev_blocks"));
     return;
   }
