@@ -2227,7 +2227,8 @@ void LiteQuery::continue_lookupBlockWithProof_getMcBlockPrev(std::vector<td::Ref
   }
 
   auto b = ton::create_serialize_tl_object<ton::lite_api::liteServer_lookupBlockResult>(ton::create_tl_lite_block_id(blk_id_),
-                                                mode_, mc_state_proof_boc.move_as_ok(), client_mc_blk_proof.move_as_ok(), std::move(lookup_mc_shard_proof_), prev_block_proof.move_as_ok(), std::move(lookup_header_proof_));
+                                                mode_, mc_state_proof_boc.move_as_ok(), client_mc_blk_proof.move_as_ok(), ton::create_tl_lite_block_id(base_blk_id_alt_),
+                                                std::move(lookup_mc_shard_proof_), prev_block_proof.move_as_ok(), std::move(lookup_header_proof_));
   finish_query(std::move(b));
 }
 
