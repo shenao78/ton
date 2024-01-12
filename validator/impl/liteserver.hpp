@@ -139,10 +139,10 @@ class LiteQuery : public td::actor::Actor {
   void perform_lookupBlockWithProof(BlockId blkid, BlockIdExt client_mc_blkid, int mode, LogicalTime lt, UnixTime utime);
   void continue_lookupBlockWithProof_getHeaderProof(Ref<ton::validator::BlockData> block);
   void continue_lookupBlockWithProof_findContainingMcBlock(td::Ref<BlockData> mc_block_data, int limit);
-  void continue_lookupBlock_findTargetBlockInShardPrevBlocks(std::vector<td::Ref<vm::Cell>> prev_blocks_proofs, td::Ref<BlockData> shard_block_data);
+  void continue_lookupBlock_findTargetBlockInShardPrevBlocks(std::vector<std::pair<BlockIdExt, td::Ref<vm::Cell>>> prev_blocks_proofs, td::Ref<BlockData> shard_block_data);
   bool check_mc_block_contains_shard_block(td::Ref<vm::Cell> mcref_block_data, BlockIdExt blkid, BlockIdExt& shard_top_blkid);
-  void continue_lookupBlockWithProof_getClientMcBlockDataState(std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs);
-  void continue_lookupBlockWithProof_getMcBlockPrev(std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs);
+  void continue_lookupBlockWithProof_getClientMcBlockDataState(std::vector<std::pair<BlockIdExt, td::Ref<vm::Cell>>> shard_prev_blocks_proofs);
+  void continue_lookupBlockWithProof_getMcBlockPrev(std::vector<std::pair<BlockIdExt, td::Ref<vm::Cell>>> shard_prev_blocks_proofs);
   void perform_listBlockTransactions(BlockIdExt blkid, int mode, int count, Bits256 account, LogicalTime lt);
   void finish_listBlockTransactions(int mode, int count);
   void perform_listBlockTransactionsExt(BlockIdExt blkid, int mode, int count, Bits256 account, LogicalTime lt);

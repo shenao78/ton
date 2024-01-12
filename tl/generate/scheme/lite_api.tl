@@ -34,7 +34,6 @@ liteServer.version mode:# version:int capabilities:long now:int = liteServer.Ver
 liteServer.blockData id:tonNode.blockIdExt data:bytes = liteServer.BlockData;
 liteServer.blockState id:tonNode.blockIdExt root_hash:int256 file_hash:int256 data:bytes = liteServer.BlockState;
 liteServer.blockHeader id:tonNode.blockIdExt mode:# header_proof:bytes = liteServer.BlockHeader;
-liteServer.lookupBlockResult id:tonNode.blockIdExt mode:# client_mc_state_proof:bytes mc_block_proof:bytes mc_block_id:tonNode.blockIdExt shard_proof:bytes prev_block_proof:bytes header:bytes = liteServer.LookupBlockResult;
 liteServer.sendMsgStatus status:int = liteServer.SendMsgStatus;
 liteServer.accountState id:tonNode.blockIdExt shardblk:tonNode.blockIdExt shard_proof:bytes proof:bytes state:bytes = liteServer.AccountState;
 liteServer.runMethodResult mode:# id:tonNode.blockIdExt shardblk:tonNode.blockIdExt shard_proof:mode.0?bytes proof:mode.0?bytes state_proof:mode.1?bytes init_c7:mode.3?bytes lib_extras:mode.4?bytes exit_code:int result:mode.2?bytes = liteServer.RunMethodResult;
@@ -57,6 +56,7 @@ liteServer.libraryResult result:(vector liteServer.libraryEntry) = liteServer.Li
 liteServer.libraryResultWithProof id:tonNode.blockIdExt result:(vector liteServer.libraryEntry) state_proof:bytes data_proof:bytes = liteServer.LibraryResultWithProof;
 liteServer.shardBlockLink id:tonNode.blockIdExt proof:bytes = liteServer.ShardBlockLink;
 liteServer.shardBlockProof masterchain_id:tonNode.blockIdExt links:(vector liteServer.shardBlockLink) = liteServer.ShardBlockProof;
+liteServer.lookupBlockResult id:tonNode.blockIdExt mode:# client_mc_state_proof:bytes mc_block_proof:bytes mc_block_id:tonNode.blockIdExt shard_proof:bytes shard_links:(vector liteServer.shardBlockLink) header:bytes = liteServer.LookupBlockResult;
 
 liteServer.debug.verbosity value:int = liteServer.debug.Verbosity;
 
