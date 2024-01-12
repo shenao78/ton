@@ -2123,6 +2123,8 @@ void LiteQuery::continue_lookupBlockWithProof_findContainingMcBlock(td::Ref<Bloc
     return;
   }
 
+  lookup_mc_shard_proof_ = mc_shard_proof_data.move_as_ok();
+
   if (shard_top_blkid == blk_id_) {
     td::actor::send_closure(actor_id(this), &LiteQuery::continue_lookupBlockWithProof_getClientMcBlockDataState, std::vector<td::Ref<vm::Cell>>());
     return;
