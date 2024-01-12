@@ -136,7 +136,6 @@ class LiteQuery : public td::actor::Actor {
   void perform_lookupBlockWithProof(BlockId blkid, BlockIdExt client_mc_blkid, int mode, LogicalTime lt, UnixTime utime);
   void continue_lookupBlockWithProof_getHeaderProof(BlockIdExt blkid, BlockIdExt client_mc_blkid, int mode, Ref<ton::validator::BlockData> block);
   void continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::Ref<BlockData> mc_block_data, int limit);
-  void continue_lookupBlockWithProof_getShardBlockData(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, BlockIdExt shard_top_blkid);
   void continue_lookupBlock_findTargetBlockInShardPrevBlocks(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, std::vector<td::Ref<vm::Cell>> prev_blocks_proofs, td::Ref<BlockData> shard_block_data);
   bool check_mc_block_contains_shard_block(td::Ref<vm::Cell> mcref_block_data, BlockIdExt blkid, BlockIdExt& shard_top_blkid);
   void continue_lookupBlock_getClientMcBlockState(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, 
