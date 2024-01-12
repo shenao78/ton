@@ -1938,6 +1938,11 @@ void LiteQuery::perform_lookupBlockWithProof(BlockId blkid, BlockIdExt mc_blkid,
           td::actor::send_closure(Self, &LiteQuery::abort_query, td::Status::Error(ErrorCode::notready, "block is not applied"));
           return;
         }
+        if (!handle->inited_masterchain_ref_block()) {
+          td::actor::send_closure(Self, &LiteQuery::abort_query, td::Status::Error("block doesn't have masterchain ref"));
+          return;
+        }
+        LOG(WARNING) << "[lookupBlockWithProof] masterchain ref: " << handle->masterchain_ref_block();
         LOG(DEBUG) << "requesting data for block " << handle->id().to_str();
         td::actor::send_closure_later(manager, &ValidatorManager::get_block_data_from_db, handle,
                                       [Self, blkid = handle->id(), mc_blkid, mode](td::Result<Ref<BlockData>> res) {
@@ -2044,7 +2049,7 @@ void LiteQuery::continue_lookupBlockWithProof_getHeaderProof(Ref<ton::validator:
         td::actor::send_closure(Self, &LiteQuery::abort_query, td::Status::Error("block doesn't have masterchain ref"));
         return;
       }
-      LOG(WARNING) << "masterchain_ref_block seqno: " << handle->masterchain_ref_block() << ", mcref: " << mcref.seq_no;
+      LOG(WARNING) << "[lookupBlockWithProof] mcref: " << mcref.seq_no;
       td::actor::send_closure(manager, &ValidatorManager::get_block_data_from_db, handle, 
                               [Self](td::Result<Ref<BlockData>> res) mutable {
         if (res.is_error()) {
