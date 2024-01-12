@@ -64,6 +64,9 @@ class LiteQuery : public td::actor::Actor {
   std::unique_ptr<block::BlockProofChain> chain_;
   Ref<vm::Stack> stack_;
 
+  td::BufferSlice lookup_header_proof_;
+  td::BufferSlice lookup_mc_shard_proof_;
+
  public:
   enum {
     default_timeout_msec = 4500,      // 4.5 seconds
@@ -134,14 +137,12 @@ class LiteQuery : public td::actor::Actor {
   void continue_getConfigParams(int mode, std::vector<int> param_list);
   void perform_lookupBlock(BlockId blkid, int mode, LogicalTime lt, UnixTime utime);
   void perform_lookupBlockWithProof(BlockId blkid, BlockIdExt client_mc_blkid, int mode, LogicalTime lt, UnixTime utime);
-  void continue_lookupBlockWithProof_getHeaderProof(BlockIdExt blkid, BlockIdExt client_mc_blkid, int mode, Ref<ton::validator::BlockData> block);
-  void continue_lookupBlockWithProof_findContainingMcBlock(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, td::Ref<BlockData> mc_block_data, int limit);
-  void continue_lookupBlock_findTargetBlockInShardPrevBlocks(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, std::vector<td::Ref<vm::Cell>> prev_blocks_proofs, td::Ref<BlockData> shard_block_data);
+  void continue_lookupBlockWithProof_getHeaderProof(Ref<ton::validator::BlockData> block);
+  void continue_lookupBlockWithProof_findContainingMcBlock(td::Ref<BlockData> mc_block_data, int limit);
+  void continue_lookupBlock_findTargetBlockInShardPrevBlocks(std::vector<td::Ref<vm::Cell>> prev_blocks_proofs, td::Ref<BlockData> shard_block_data);
   bool check_mc_block_contains_shard_block(td::Ref<vm::Cell> mcref_block_data, BlockIdExt blkid, BlockIdExt& shard_top_blkid);
-  void continue_lookupBlock_getClientMcBlockState(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, 
-                                      std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs);
-  void continue_lookupBlock_getMcBlockPrev(BlockIdExt blkid, BlockIdExt client_mc_blkid, td::BufferSlice header_proof, BlockIdExt mc_blkid, td::BufferSlice mc_shard_proof_data, 
-                                      std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs, Ref<ShardState> client_mc_state);
+  void continue_lookupBlockWithProof_getClientMcBlockDataState(std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs);
+  void continue_lookupBlockWithProof_getMcBlockPrev(std::vector<td::Ref<vm::Cell>> shard_prev_blocks_proofs);
   void perform_listBlockTransactions(BlockIdExt blkid, int mode, int count, Bits256 account, LogicalTime lt);
   void finish_listBlockTransactions(int mode, int count);
   void perform_listBlockTransactionsExt(BlockIdExt blkid, int mode, int count, Bits256 account, LogicalTime lt);
