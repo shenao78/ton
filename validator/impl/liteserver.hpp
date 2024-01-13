@@ -65,7 +65,7 @@ class LiteQuery : public td::actor::Actor {
   Ref<vm::Stack> stack_;
 
   td::BufferSlice lookup_header_proof_;
-  td::BufferSlice lookup_mc_shard_proof_;
+  td::BufferSlice lookup_prev_header_proof_;
 
  public:
   enum {
@@ -137,7 +137,8 @@ class LiteQuery : public td::actor::Actor {
   void continue_getConfigParams(int mode, std::vector<int> param_list);
   void perform_lookupBlock(BlockId blkid, int mode, LogicalTime lt, UnixTime utime);
   void perform_lookupBlockWithProof(BlockId blkid, BlockIdExt client_mc_blkid, int mode, LogicalTime lt, UnixTime utime);
-  void continue_lookupBlockWithProof_getHeaderProof(Ref<ton::validator::BlockData> block, BlockSeqno masterchain_ref_seqno);
+  void continue_lookupBlockWithProof_getHeaderProof(Ref<ton::validator::BlockData> block, AccountIdPrefixFull req_prefix, BlockSeqno masterchain_ref_seqno);
+  void continue_lookupBlockWithProof_gotPrevBlockData(Ref<BlockData> prev_block, BlockSeqno masterchain_ref_seqno);
   void continue_lookupBlockWithProof_buildProofLinks(td::Ref<BlockData> cur_block, std::vector<std::pair<BlockIdExt, td::Ref<vm::Cell>>> result);
   void continue_lookupBlockWithProof_getClientMcBlockDataState(std::vector<std::pair<BlockIdExt, td::Ref<vm::Cell>>> links);
   void continue_lookupBlockWithProof_getMcBlockPrev(std::vector<std::pair<BlockIdExt, td::Ref<vm::Cell>>> links);
