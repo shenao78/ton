@@ -979,7 +979,7 @@ void LiteQuery::continue_getLibrariesWithProof(std::vector<td::Bits256> library_
     }
     if (mode & 1) {
       // include first 16 publishers in the proof
-      auto publishers_dict = vm::Dictionary{vm::DictNonEmpty(), std::move(libdescr.publishers), 256};
+      auto publishers_dict = vm::Dictionary{vm::DictNonEmpty(), libdescr.publishers, 256};
       int publishers_max_count = 1;
       auto iter = publishers_dict.begin();
       while (publishers_max_count-- && iter != publishers_dict.end()) { 
