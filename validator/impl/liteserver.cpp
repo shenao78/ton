@@ -980,11 +980,9 @@ void LiteQuery::continue_getLibrariesWithProof(std::vector<td::Bits256> library_
     if (mode & 1) {
       // include first 16 publishers in the proof
       auto publishers_dict = vm::Dictionary{vm::DictNonEmpty(), libdescr.publishers, 256};
-      int publishers_max_count = 0;
       auto iter = publishers_dict.begin();
-      while (publishers_max_count-- && iter != publishers_dict.end()) { 
-        ++iter;
-      }
+      int max_publishers = 15; // set to 15 because publishers_dict.begin() counts as the first visit
+      for (int i = 0; i < max_publishers && iter != publishers_dict.end(); ++i, ++iter) {}
     }
     result.push_back(ton::create_tl_object<ton::lite_api::liteServer_libraryEntry>(hash, data.move_as_ok()));
   }
