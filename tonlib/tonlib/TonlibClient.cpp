@@ -4532,7 +4532,7 @@ void TonlibClient::get_libraries(ton::BlockIdExt blkid, std::vector<td::Bits256>
     return;
   }
 
-  client_.send_query(ton::lite_api::liteServer_getLibrariesWithProof(ton::create_tl_lite_block_id(blkid), std::move(not_cached_hashes)),
+  client_.send_query(ton::lite_api::liteServer_getLibrariesWithProof(ton::create_tl_lite_block_id(blkid), 0, std::move(not_cached_hashes)),
                      promise.wrap([self=this, blkid, result_entries = std::move(result_entries), not_cached_hashes]
                                   (td::Result<ton::lite_api::object_ptr<ton::lite_api::liteServer_libraryResultWithProof>> r_libraries) mutable 
                                     -> td::Result<tonlib_api::object_ptr<tonlib_api::smc_libraryResult>> {
