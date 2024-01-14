@@ -953,24 +953,6 @@ void LiteQuery::continue_getLibrariesWithProof(std::vector<td::Bits256> library_
   }
   auto libraries_dict = vm::Dictionary(state.r1.libraries->prefetch_ref(), 256);
 
-  for (auto lib: libraries_dict) {
-    std::ostringstream oss;
-    lib.second->print_rec(oss);
-    block::gen::LibDescr::Record libdescr;
-    if (!tlb::csr_unpack(lib.second, libdescr)) {
-      fatal_error("cannot unpack LibDescr record "s + lib.first.to_hex(256));
-      return;
-    }
-    auto publishers_dict = vm::Dictionary{vm::DictNonEmpty(), std::move(libdescr.publishers), 256};
-    int publishers_count = 0;
-    auto iter = publishers_dict.begin();
-    while (iter != publishers_dict.end()) { 
-      ++iter;
-      ++publishers_count;
-    }
-    LOG(WARNING) << "library " << lib.first.to_hex(256) << ": " << publishers_count << " publishers";
-  }
-
   std::vector<ton::tl_object_ptr<ton::lite_api::liteServer_libraryEntry>> result;
   for (const auto& hash : library_list) {
     LOG(INFO) << "looking for library " << hash.to_hex();
@@ -998,7 +980,7 @@ void LiteQuery::continue_getLibrariesWithProof(std::vector<td::Bits256> library_
     if (mode & 1) {
       // include first 16 publishers in the proof
       auto publishers_dict = vm::Dictionary{vm::DictNonEmpty(), std::move(libdescr.publishers), 256};
-      int publishers_max_count = 16;
+      int publishers_max_count = 1;
       auto iter = publishers_dict.begin();
       while (publishers_max_count-- && iter != publishers_dict.end()) { 
         ++iter;
