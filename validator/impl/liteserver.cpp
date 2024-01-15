@@ -520,6 +520,7 @@ void LiteQuery::get_block_handle_checked(BlockIdExt blkid, td::Promise<ConstBloc
           if (handle->is_applied()) {
             promise.set_result(std::move(handle));
           } else {
+            LOG(ERROR) << "cannot get block handle for " << handle->id().to_str() << " : block is not applied";
             promise.set_error(td::Status::Error(ErrorCode::notready, "block is not applied"));
           }
         }
@@ -1593,6 +1594,7 @@ void LiteQuery::continue_getTransactions(unsigned remaining, bool exact) {
         } else {
           auto handle = res.move_as_ok();
           if (!handle->is_applied()) {
+            LOG(ERROR) << "cannot get block handle for " << handle->id().to_str() << " : block is not applied";
             td::actor::send_closure(Self, &LiteQuery::abort_getTransactions, td::Status::Error(ErrorCode::notready, "block is not applied"),
                                     ton::BlockIdExt{});
             return;
@@ -1947,6 +1949,7 @@ void LiteQuery::perform_lookupBlockWithProof(BlockId blkid, BlockIdExt mc_blkid,
       } else {
         auto handle = res.move_as_ok();
         if (!handle->is_applied()) {
+          LOG(ERROR) << "cannot get block handle for " << handle->id().to_str() << " : block is not applied";
           td::actor::send_closure(Self, &LiteQuery::abort_query, td::Status::Error(ErrorCode::notready, "block is not applied"));
           return;
         }
@@ -2223,6 +2226,7 @@ void LiteQuery::perform_lookupBlock(BlockId blkid, int mode, LogicalTime lt, Uni
         } else {
           auto handle = res.move_as_ok();
           if (!handle->is_applied()) {
+            LOG(ERROR) << "cannot get block handle for " << handle->id().to_str() << " : block is not applied";
             td::actor::send_closure(Self, &LiteQuery::abort_query, td::Status::Error(ErrorCode::notready, "block is not applied"));
             return;
           }
