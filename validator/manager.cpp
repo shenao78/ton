@@ -190,6 +190,7 @@ void ValidatorManagerImpl::validate_block_proof_rel(BlockIdExt block_id, BlockId
 }
 
 void ValidatorManagerImpl::validate_block(ReceivedBlock block, td::Promise<BlockHandle> promise) {
+  LOG(WARNING) << "[applied] validate_block " << block.id;
   auto blkid = block.id;
   auto pp = create_block(std::move(block));
   if (pp.is_error()) {
@@ -201,12 +202,14 @@ void ValidatorManagerImpl::validate_block(ReceivedBlock block, td::Promise<Block
   auto P = td::PromiseCreator::lambda(
       [SelfId = actor_id(this), promise = std::move(promise), id = block.id](td::Result<td::Unit> R) mutable {
         if (R.is_error()) {
+          LOG(WARNING) << "[applied] validate_block apply block fail " << id;
           promise.set_error(R.move_as_error());
         } else {
           td::actor::send_closure(SelfId, &ValidatorManager::get_block_handle, id, true, std::move(promise));
         }
       });
   run_apply_block_query(block.id, pp.move_as_ok(), block.id, actor_id(this), td::Timestamp::in(10.0), std::move(P));
+  LOG(WARNING) << "[applied] validate_block starting apply block " << blkid;
 }
 
 void ValidatorManagerImpl::prevalidate_block(BlockBroadcast broadcast, td::Promise<td::Unit> promise) {
@@ -1203,6 +1206,7 @@ void ValidatorManagerImpl::written_handle(BlockHandle handle, td::Promise<td::Un
 
 void ValidatorManagerImpl::new_block_cont(BlockHandle handle, td::Ref<ShardState> state,
                                           td::Promise<td::Unit> promise) {
+  LOG(WARNING) << "[applied] ValidatorManagerImpl::new_block_cont: " << handle->id();
   if (state->get_shard().is_masterchain() && handle->id().id.seqno > last_masterchain_seqno_) {
     if (handle->id().id.seqno == last_masterchain_seqno_ + 1) {
       last_masterchain_seqno_ = handle->id().id.seqno;
@@ -1258,19 +1262,24 @@ void ValidatorManagerImpl::new_block_cont(BlockHandle handle, td::Ref<ShardState
 }
 
 void ValidatorManagerImpl::new_block(BlockHandle handle, td::Ref<ShardState> state, td::Promise<td::Unit> promise) {
+  LOG(WARNING) << "[applied] ValidatorManagerImpl::new_block " << handle->id();
   if (handle->is_applied()) {
+    LOG(WARNING) << "[applied] ValidatorManagerImpl::new_block already applied " << handle->id();
     return new_block_cont(std::move(handle), std::move(state), std::move(promise));
   } else {
     auto P = td::PromiseCreator::lambda([SelfId = actor_id(this), handle, state = std::move(state),
                                          promise = std::move(promise)](td::Result<td::Unit> R) mutable {
       if (R.is_error()) {
+        LOG(WARNING) << "[applied] ValidatorManagerImpl::new_block lambda apply block error " << handle->id();
         promise.set_error(R.move_as_error());
       } else {
+        LOG(WARNING) << "[applied] ValidatorManagerImpl::new_block lambda apply block success " << handle->id();
         td::actor::send_closure(SelfId, &ValidatorManagerImpl::new_block_cont, std::move(handle), std::move(state),
                                 std::move(promise));
       }
     });
     td::actor::send_closure(db_, &Db::apply_block, handle, std::move(P));
+    LOG(WARNING) << "[applied] ValidatorManagerImpl::new_block starting apply block " << handle->id();
   }
 }
 
@@ -1357,6 +1366,7 @@ td::Ref<MasterchainState> ValidatorManagerImpl::do_get_last_liteserver_state() {
     return {};
   }
   if (last_liteserver_state_.is_null() || last_liteserver_state_->get_unix_time() < td::Clocks::system() - 30) {
+    LOG(WARNING) << "[applied] last_liteserver_state_ is too old, assigning to last_masterchain_state_ " << last_masterchain_state_->get_seqno();
     last_liteserver_state_ = last_masterchain_state_;
   }
   return last_liteserver_state_;
@@ -1739,6 +1749,7 @@ void ValidatorManagerImpl::completed_prestart_sync() {
 }
 
 void ValidatorManagerImpl::new_masterchain_block() {
+  LOG(WARNING) << "[applied] ValidatorManagerImpl::new_masterchain_block: " << last_masterchain_block_id_.seqno();
   if (last_masterchain_seqno_ > 0 && last_masterchain_block_handle_->is_key_block()) {
     last_key_block_handle_ = last_masterchain_block_handle_;
     if (last_key_block_handle_->id().seqno() > last_known_key_block_handle_->id().seqno()) {
@@ -2309,6 +2320,7 @@ void ValidatorManagerImpl::update_shard_client_block_handle(BlockHandle handle, 
   shard_client_handle_ = std::move(handle);
   auto seqno = shard_client_handle_->id().seqno();
   if (last_liteserver_state_.is_null() || last_liteserver_state_->get_block_id().seqno() < seqno) {
+    LOG(WARNING) << "[applied] set last_liteserver_state_ to " << seqno;
     last_liteserver_state_ = std::move(state);
   }
   shard_client_update(seqno);
