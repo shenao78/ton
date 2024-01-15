@@ -205,6 +205,7 @@ void ValidatorManagerImpl::validate_block(ReceivedBlock block, td::Promise<Block
           LOG(WARNING) << "[applied] validate_block apply block fail " << id;
           promise.set_error(R.move_as_error());
         } else {
+          LOG(WARNING) << "[applied] validate_block apply block success " << id;
           td::actor::send_closure(SelfId, &ValidatorManager::get_block_handle, id, true, std::move(promise));
         }
       });
