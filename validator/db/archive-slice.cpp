@@ -897,7 +897,7 @@ void ArchiveSlice::truncate(BlockSeqno masterchain_seqno, ConstBlockHandle handl
   auto pack = cutoff.move_as_ok();
   CHECK(pack);
 
-  auto pack_r = Package::open(pack->path + ".new", false, !is_secondary_);
+  auto pack_r = Package::open(pack->path + ".new", false, !secondary_);
   pack_r.ensure();
   auto new_package = std::make_shared<Package>(pack_r.move_as_ok());
   new_package->truncate(0).ensure();
