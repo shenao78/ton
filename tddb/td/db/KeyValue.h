@@ -20,6 +20,9 @@
 #include "td/utils/Status.h"
 #include "td/utils/logging.h"
 namespace td {
+
+enum class DbOpenMode { db_primary, db_secondary, db_readonly };
+
 class KeyValueReader {
  public:
   virtual ~KeyValueReader() = default;

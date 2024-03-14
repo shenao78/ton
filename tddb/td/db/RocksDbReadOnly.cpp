@@ -12,7 +12,7 @@
     along with TON Blockchain Library.  If not, see <http://www.gnu.org/licenses/>.
     Copyright 2017-2020 Telegram Systems LLP
 */
-#include "td/db/RocksDbSecondary.h"
+#include "td/db/RocksDbReadOnly.h"
 
 #include "rocksdb/db.h"
 #include "rocksdb/table.h"
@@ -36,25 +36,25 @@ static rocksdb::Slice to_rocksdb(Slice slice) {
 }
 }  // namespace
 
-Status RocksDbSecondary::destroy(Slice path) {
+Status RocksDbReadOnly::destroy(Slice path) {
   return from_rocksdb(rocksdb::DestroyDB(path.str(), {}));
 }
 
-RocksDbSecondary::RocksDbSecondary(RocksDbSecondary &&) = default;
-RocksDbSecondary &RocksDbSecondary::operator=(RocksDbSecondary &&) = default;
+RocksDbReadOnly::RocksDbReadOnly(RocksDbReadOnly &&) = default;
+RocksDbReadOnly &RocksDbReadOnly::operator=(RocksDbReadOnly &&) = default;
 
-RocksDbSecondary::~RocksDbSecondary() {
+RocksDbReadOnly::~RocksDbReadOnly() {
   if (!db_) {
     return;
   }
   end_snapshot().ensure();
 }
 
-RocksDbSecondary RocksDbSecondary::clone() const {
-  return RocksDbSecondary{db_, statistics_};
+RocksDbReadOnly RocksDbReadOnly::clone() const {
+  return RocksDbReadOnly{db_, statistics_};
 }
 
-Result<RocksDbSecondary> RocksDbSecondary::open(std::string path) {
+Result<RocksDbReadOnly> RocksDbReadOnly::open(std::string path) {
   rocksdb::DB *db;
   auto statistics = rocksdb::CreateDBStatistics();
   {
@@ -67,45 +67,36 @@ Result<RocksDbSecondary> RocksDbSecondary::open(std::string path) {
     options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
 
     options.create_if_missing = false;
-    options.max_background_compactions = 4;
-    options.max_background_flushes = 2;
     options.bytes_per_sync = 1 << 20;
-    options.writable_file_max_buffer_size = 2 << 14;
-    options.keep_log_file_num = 1;
     options.statistics = statistics;
     rocksdb::ColumnFamilyOptions cf_options(options);
     std::vector<rocksdb::ColumnFamilyDescriptor> column_families;
     column_families.push_back(rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, cf_options));
     std::vector<rocksdb::ColumnFamilyHandle *> handles;
     TRY_STATUS(from_rocksdb(
-      rocksdb::DB::OpenAsSecondary(options, path, path + "/secondary", column_families, &handles, &db)));
+      rocksdb::DB::OpenForReadOnly(options, path, column_families, &handles, &db)));
     CHECK(handles.size() == 1);
     // i can delete the handle since DBImpl is always holding a reference to
     // default column family
     delete handles[0];
   }
-  TRY_STATUS(from_rocksdb(db->TryCatchUpWithPrimary()));
-  return RocksDbSecondary(std::shared_ptr<rocksdb::DB>(db), std::move(statistics));
+  return RocksDbReadOnly(std::shared_ptr<rocksdb::DB>(db), std::move(statistics));
 }
 
-Status RocksDbSecondary::try_catch_up_with_primary() {
-  return from_rocksdb(db_->TryCatchUpWithPrimary());
-}
-
-std::unique_ptr<KeyValueReader> RocksDbSecondary::snapshot() {
-  auto res = std::make_unique<RocksDbSecondary>(clone());
+std::unique_ptr<KeyValueReader> RocksDbReadOnly::snapshot() {
+  auto res = std::make_unique<RocksDbReadOnly>(clone());
   res->begin_snapshot().ensure();
   return std::move(res);
 }
 
-std::string RocksDbSecondary::stats() const {
+std::string RocksDbReadOnly::stats() const {
   std::string out;
   db_->GetProperty("rocksdb.stats", &out);
   //db_->GetProperty("rocksdb.cur-size-all-mem-tables", &out);
   return out;
 }
 
-Result<RocksDbSecondary::GetStatus> RocksDbSecondary::get(Slice key, std::string &value) {
+Result<RocksDbReadOnly::GetStatus> RocksDbReadOnly::get(Slice key, std::string &value) {
   rocksdb::Status status;
   if (snapshot_) {
     rocksdb::ReadOptions options;
@@ -123,15 +114,15 @@ Result<RocksDbSecondary::GetStatus> RocksDbSecondary::get(Slice key, std::string
   return from_rocksdb(status);
 }
 
-Status RocksDbSecondary::set(Slice key, Slice value) {
+Status RocksDbReadOnly::set(Slice key, Slice value) {
   CHECK(false)
 }
 
-Status RocksDbSecondary::erase(Slice key) {
+Status RocksDbReadOnly::erase(Slice key) {
   CHECK(false)
 }
 
-Result<size_t> RocksDbSecondary::count(Slice prefix) {
+Result<size_t> RocksDbReadOnly::count(Slice prefix) {
   rocksdb::ReadOptions options;
   options.snapshot = snapshot_.get();
   std::unique_ptr<rocksdb::Iterator> iterator;
@@ -151,47 +142,47 @@ Result<size_t> RocksDbSecondary::count(Slice prefix) {
   return res;
 }
 
-Status RocksDbSecondary::begin_write_batch() {
+Status RocksDbReadOnly::begin_write_batch() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::begin_transaction() {
+Status RocksDbReadOnly::begin_transaction() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::commit_write_batch() {
+Status RocksDbReadOnly::commit_write_batch() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::commit_transaction() {
+Status RocksDbReadOnly::commit_transaction() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::abort_write_batch() {
+Status RocksDbReadOnly::abort_write_batch() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::abort_transaction() {
+Status RocksDbReadOnly::abort_transaction() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::flush() {
+Status RocksDbReadOnly::flush() {
   CHECK(false)
 }
 
-Status RocksDbSecondary::begin_snapshot() {
+Status RocksDbReadOnly::begin_snapshot() {
   snapshot_.reset(db_->GetSnapshot());
   return td::Status::OK();
 }
 
-Status RocksDbSecondary::end_snapshot() {
+Status RocksDbReadOnly::end_snapshot() {
   if (snapshot_) {
     db_->ReleaseSnapshot(snapshot_.release());
   }
   return td::Status::OK();
 }
 
-RocksDbSecondary::RocksDbSecondary(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Statistics> statistics)
+RocksDbReadOnly::RocksDbReadOnly(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Statistics> statistics)
     : db_(std::move(db)), statistics_(std::move(statistics)) {
 }
 }  // namespace td

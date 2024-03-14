@@ -59,7 +59,7 @@ class CellDbIn : public CellDbBase {
   void try_catch_up_with_primary(td::Promise<td::Unit> promise);
 
   CellDbIn(td::actor::ActorId<RootDb> root_db, td::actor::ActorId<CellDb> parent, std::string path,
-           td::Ref<ValidatorManagerOptions> opts, bool secondary = false);
+           td::Ref<ValidatorManagerOptions> opts, td::DbOpenMode mode);
 
   void start_up() override;
   void alarm() override;
@@ -111,7 +111,7 @@ class CellDbIn : public CellDbBase {
   td::Timestamp migrate_after_ = td::Timestamp::never();
   bool migration_active_ = false;
 
-  bool secondary_;
+  td::DbOpenMode mode_;
 
   struct MigrationStats {
     td::Timer start_;
@@ -148,8 +148,8 @@ class CellDb : public CellDbBase {
   void get_cell_db_reader(td::Promise<std::shared_ptr<vm::CellDbReader>> promise);
   void try_catch_up_with_primary(td::Promise<td::Unit> promise);
 
-  CellDb(td::actor::ActorId<RootDb> root_db, std::string path, td::Ref<ValidatorManagerOptions> opts, bool secondary = false)
-      : root_db_(root_db), path_(path), opts_(opts), secondary_(secondary) {
+  CellDb(td::actor::ActorId<RootDb> root_db, std::string path, td::Ref<ValidatorManagerOptions> opts, td::DbOpenMode mode = td::DbOpenMode::db_primary)
+      : root_db_(root_db), path_(path), opts_(opts), mode_(mode) {
   }
 
   void start_up() override;
@@ -164,7 +164,7 @@ class CellDb : public CellDbBase {
   std::unique_ptr<vm::DynamicBagOfCellsDb> boc_;
   bool started_ = false;
 
-  bool secondary_;
+  td::DbOpenMode mode_;
 
   std::function<void(const vm::CellLoader::LoadResult&)> on_load_callback_;
 };
