@@ -53,7 +53,7 @@ class StateDb : public td::actor::Actor {
   void update_db_version(td::uint32 version, td::Promise<td::Unit> promise);
   void get_db_version(td::Promise<td::uint32> promise);
 
-  StateDb(td::actor::ActorId<RootDb> root_db, std::string path, bool secondary = false);
+  StateDb(td::actor::ActorId<RootDb> root_db, std::string path, td::DbOpenMode mode);
 
   void start_up() override;
   void truncate(BlockSeqno masterchain_seqno, ConstBlockHandle handle, td::Promise<td::Unit> promise);
@@ -67,7 +67,7 @@ class StateDb : public td::actor::Actor {
 
   td::actor::ActorId<RootDb> root_db_;
   std::string db_path_;
-  bool secondary_;
+  td::DbOpenMode mode_;
 };
 
 }  // namespace validator
