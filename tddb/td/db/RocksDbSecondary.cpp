@@ -63,7 +63,8 @@ Result<RocksDbSecondary> RocksDbSecondary::open(std::string path) {
     static auto cache = rocksdb::NewLRUCache(1 << 30);
 
     rocksdb::BlockBasedTableOptions table_options;
-    table_options.block_cache = cache;
+    // commenting this line because in recent rocksdb version it leads to NotFound error (file not in archive slice)
+    // table_options.block_cache = cache; 
     options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
 
     options.create_if_missing = false;
