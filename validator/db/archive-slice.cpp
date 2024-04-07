@@ -706,7 +706,7 @@ td::Result<ArchiveSlice::PackageInfo *> ArchiveSlice::choose_package(BlockSeqno 
 void ArchiveSlice::add_package(td::uint32 seqno, td::uint64 size, td::uint32 version) {
   PackageId p_id{seqno, key_blocks_only_, temp_};
   std::string path = PSTRING() << db_root_ << p_id.path() << p_id.name() << ".pack";
-  auto R = Package::open(path, mode_ != td::DbOpenMode::db_primary, mode_ != td::DbOpenMode::db_primary);
+  auto R = Package::open(path, mode_ != td::DbOpenMode::db_primary, mode_ == td::DbOpenMode::db_primary);
   if (R.is_error()) {
     LOG(FATAL) << "failed to open/create archive '" << path << "': " << R.move_as_error();
     return;
@@ -939,7 +939,7 @@ void ArchiveSlice::truncate(BlockSeqno masterchain_seqno, ConstBlockHandle handl
   auto pack = cutoff.move_as_ok();
   CHECK(pack);
 
-  auto pack_r = Package::open(pack->path + ".new", mode_ != td::DbOpenMode::db_primary, mode_ != td::DbOpenMode::db_primary);
+  auto pack_r = Package::open(pack->path + ".new", mode_ != td::DbOpenMode::db_primary, mode_ == td::DbOpenMode::db_primary);
   pack_r.ensure();
   auto new_package = std::make_shared<Package>(pack_r.move_as_ok());
   new_package->truncate(0).ensure();
