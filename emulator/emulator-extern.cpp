@@ -77,7 +77,7 @@ void *transaction_emulator_create(const char *config_params_boc, int vm_log_verb
     return nullptr;
   }
 
-  return new emulator::TransactionEmulator(global_config_res.move_as_ok(), vm_log_verbosity);
+  return new emulator::TransactionEmulator(std::make_shared<block::Config>(global_config_res.move_as_ok()), vm_log_verbosity);
 }
 
 const char *transaction_emulator_emulate_transaction(void *transaction_emulator, const char *shard_account_boc, const char *message_boc) {
@@ -319,7 +319,7 @@ bool transaction_emulator_set_config(void *transaction_emulator, const char* con
     return false;
   }
 
-  emulator->set_config(global_config_res.move_as_ok());
+  emulator->set_config(std::make_shared<block::Config>(global_config_res.move_as_ok()));
 
   return true;
 }
