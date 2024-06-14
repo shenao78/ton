@@ -303,7 +303,7 @@ class AccountState {
     return tonlib_api::make_object<tonlib_api::raw_accountState>(std::move(code), std::move(data), raw().frozen_hash);
   }
 
-  td::Result<tonlib_api::object_ptr<tonlib_api::raw_fullAccountState>> to_raw_fullAccountState() const {
+  tonlib_api::object_ptr<tonlib_api::raw_fullAccountState> to_raw_fullAccountState() const {
     auto state = get_smc_state();
     std::string code;
     if (state.code.not_null()) {
@@ -4310,6 +4310,43 @@ td::Status TonlibClient::do_request(const tonlib_api::smc_loadByTransaction& req
   hash.as_slice().copy_from(hash_str);
   make_request(int_api::GetAccountStateByTransaction{account_address, lt, hash},
                promise.send_closure(actor_id(this), &TonlibClient::finish_load_smc));
+  return td::Status::OK();
+}
+
+void TonlibClient::finish_load_smc_full(td::unique_ptr<AccountState> smc,
+                                        td::Promise<object_ptr<tonlib_api::smc_fullInfo>>&& promise) {
+  auto fullAccountState = smc->to_raw_fullAccountState();
+  auto id = register_smc(std::move(smc));
+  promise.set_value(tonlib_api::make_object<tonlib_api::smc_fullInfo>(id, std::move(fullAccountState)));
+}
+
+td::Result<ton::BlockIdExt> to_block_id(const tonlib_api::ton_blockIdExt& blk);
+
+td::Status TonlibClient::do_request(const tonlib_api::smc_loadFull& request,
+                                    td::Promise<object_ptr<tonlib_api::smc_fullInfo>>&& promise) {
+  if (!request.account_address_) {
+    return TonlibError::EmptyField("account_address");
+  }
+
+  TRY_RESULT(account_address, get_account_address(request.account_address_->account_address_));
+
+  if (request.mode_ & 1) {
+    if (!request.transaction_id_) {
+      return TonlibError::EmptyField("transaction_id");
+    }
+    auto lt = request.transaction_id_->lt_;
+    auto hash_str = request.transaction_id_->hash_;
+    if (hash_str.size() != 32) {
+      return td::Status::Error(400, "Invalid transaction id hash size");
+    }
+    td::Bits256 hash;
+    hash.as_slice().copy_from(hash_str);
+    make_request(int_api::GetAccountStateByTransaction{std::move(account_address), lt, hash},
+                 promise.send_closure(actor_id(this), &TonlibClient::finish_load_smc_full));
+  } else {
+    make_request(int_api::GetAccountState{std::move(account_address), query_context_.block_id.copy(), {}},
+                 promise.send_closure(actor_id(this), &TonlibClient::finish_load_smc_full));
+  }
   return td::Status::OK();
 }
 

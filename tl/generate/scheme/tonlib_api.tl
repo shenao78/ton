@@ -177,6 +177,7 @@ tvm.stackEntryList list:tvm.List = tvm.StackEntry;
 tvm.stackEntryUnsupported = tvm.StackEntry;
 
 smc.info id:int53 = smc.Info;
+smc.fullInfo id:int53 state:raw.FullAccountState = smc.FullInfo;
 
 smc.methodIdNumber number:int32 = smc.MethodId;
 smc.methodIdName name:string = smc.MethodId;
@@ -305,6 +306,7 @@ query.getInfo id:int53 = query.Info;
 
 smc.load account_address:accountAddress = smc.Info;
 smc.loadByTransaction account_address:accountAddress transaction_id:internal.transactionId = smc.Info;
+smc.loadFull account_address:accountAddress mode:# transaction_id:mode.0?internal.transactionId  = smc.FullInfo;
 smc.forget id:int53 = Ok;
 smc.getCode id:int53 = tvm.Cell;
 smc.getData id:int53 = tvm.Cell;
