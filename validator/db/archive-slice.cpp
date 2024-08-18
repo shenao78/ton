@@ -837,32 +837,34 @@ void destroy_db(std::string name, td::uint32 attempt, td::Promise<td::Unit> prom
     LOG(DEBUG) << "failed to destroy index " << name << ": " << S;
   }
   delay_action(
-      [name, attempt, promise = std::move(promise)]() mutable { destroy_db(name, attempt, std::move(promise)); },
+      [name, attempt, promise = std::move(promise)]() mutable { destroy_db(name, attempt + 1, std::move(promise)); },
       td::Timestamp::in(1.0));
 }
 }  // namespace
 
 void ArchiveSlice::destroy(td::Promise<td::Unit> promise) {
   before_query();
-  td::MultiPromise mp;
-  auto ig = mp.init_guard();
-  ig.add_promise(std::move(promise));
   destroyed_ = true;
 
-  for (auto &p : packages_) {
-    td::unlink(p.path).ensure();
+  if (mode_ == td::DbOpenMode::db_primary) {
+    for (auto &p : packages_) {
+      td::unlink(p.path).ensure();
+    }
   }
+  
   if (statistics_.pack_statistics) {
     statistics_.pack_statistics->record_close(packages_.size());
   }
   packages_.clear();
   kv_ = nullptr;
 
-  PackageId p_id{archive_id_, key_blocks_only_, temp_};
-  std::string db_path = PSTRING() << db_root_ << p_id.path() << p_id.name() << ".index";
-  delay_action([name = db_path, attempt = 0,
-                promise = ig.get_promise()]() mutable { destroy_db(name, attempt, std::move(promise)); },
-               td::Timestamp::in(0.0));
+  if (mode_ == td::DbOpenMode::db_primary) {
+    delay_action([name = db_path_, attempt = 0,
+                  promise = std::move(promise)]() mutable { destroy_db(name, attempt, std::move(promise)); },
+                td::Timestamp::in(0.0));
+  } else {
+    promise.set_value(td::Unit());
+  }
 }
 
 BlockSeqno ArchiveSlice::max_masterchain_seqno() {
