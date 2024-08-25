@@ -107,9 +107,13 @@ void CellDbIn::start_up() {
     case td::DbOpenMode::db_primary:
       cell_db_ = std::make_shared<td::RocksDb>(td::RocksDb::open(path_, std::move(db_options)).move_as_ok());
       break;
-    case td::DbOpenMode::db_secondary:
-      cell_db_ = std::make_shared<td::RocksDbSecondary>(td::RocksDbSecondary::open(path_, std::move(db_options)).move_as_ok());
+    case td::DbOpenMode::db_secondary: {
+      auto secondary_working_dir = opts_->get_secondary_working_dir();
+      CHECK(secondary_working_dir);
+      td::RocksDbSecondaryOptions secondary_db_options{std::move(db_options), std::move(secondary_working_dir.value())};
+      cell_db_ = std::make_shared<td::RocksDbSecondary>(td::RocksDbSecondary::open(path_, std::move(secondary_db_options)).move_as_ok());
       break;
+    }
     case td::DbOpenMode::db_readonly:
       cell_db_ = std::make_shared<td::RocksDbReadOnly>(td::RocksDbReadOnly::open(path_, std::move(db_options)).move_as_ok());
       break;
@@ -231,8 +235,12 @@ void CellDbIn::flush_db_stats() {
   }
   auto stats = td::RocksDb::statistics_to_string(statistics_) + snapshot_statistics_->to_string() +
                cell_db_statistics_.to_string();
+  std::string stats_file = path_ + "/db_stats.txt";
+  if (mode_ == td::DbOpenMode::db_secondary) {
+    stats_file = opts_->get_secondary_working_dir().value() + "/celldb_stats.txt";
+  }
   auto to_file_r =
-      td::FileFd::open(path_ + "/db_stats.txt", td::FileFd::Truncate | td::FileFd::Create | td::FileFd::Write, 0644);
+      td::FileFd::open(stats_file, td::FileFd::Truncate | td::FileFd::Create | td::FileFd::Write, 0644);
   if (to_file_r.is_error()) {
     LOG(ERROR) << "Failed to open db_stats.txt: " << to_file_r.move_as_error();
     return;
@@ -249,12 +257,14 @@ void CellDbIn::flush_db_stats() {
 }
 
 void CellDbIn::alarm() {
-  if (mode_ != td::DbOpenMode::db_primary) {
-    return;
-  }
   if (statistics_flush_at_ && statistics_flush_at_.is_in_past()) {
     statistics_flush_at_ = td::Timestamp::in(60.0);
     flush_db_stats();
+  }
+
+  if (mode_ != td::DbOpenMode::db_primary) {
+    alarm_timestamp() = td::Timestamp::in(10.0);
+    return;
   }
 
   if (migrate_after_ && migrate_after_.is_in_past()) {

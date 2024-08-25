@@ -97,7 +97,8 @@ class ArchiveLru;
 class ArchiveSlice : public td::actor::Actor {
  public:
   ArchiveSlice(td::uint32 archive_id, bool key_blocks_only, bool temp, bool finalized, std::string db_root,
-               td::actor::ActorId<ArchiveLru> archive_lru, DbStatistics statistics = {}, td::DbOpenMode mode = td::DbOpenMode::db_primary);
+               td::actor::ActorId<ArchiveLru> archive_lru, DbStatistics statistics = {}, 
+               td::DbOpenMode mode = td::DbOpenMode::db_primary, td::optional<std::string> secondary_workdir = {});
 
   void get_archive_id(BlockSeqno masterchain_seqno, td::Promise<td::uint64> promise);
 
@@ -175,6 +176,7 @@ class ArchiveSlice : public td::actor::Actor {
   DbStatistics statistics_;
   std::unique_ptr<td::KeyValue> kv_;
   td::DbOpenMode mode_;
+  td::optional<std::string> secondary_workdir_;
 
   struct PackageInfo {
     PackageInfo(std::shared_ptr<Package> package, td::actor::ActorOwn<PackageWriter> writer, BlockSeqno id,

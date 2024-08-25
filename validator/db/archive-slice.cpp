@@ -574,9 +574,12 @@ void ArchiveSlice::before_query() {
       case td::DbOpenMode::db_readonly:
         kv_ = std::make_unique<td::RocksDbReadOnly>(td::RocksDbReadOnly::open(db_path_, std::move(db_options)).move_as_ok());
         break;
-      case td::DbOpenMode::db_secondary:
-        kv_ = std::make_unique<td::RocksDbSecondary>(td::RocksDbSecondary::open(db_path_, std::move(db_options)).move_as_ok());
+      case td::DbOpenMode::db_secondary: {
+        CHECK(secondary_workdir_);
+        td::RocksDbSecondaryOptions secondary_db_options{std::move(db_options), secondary_workdir_.value()};
+        kv_ = std::make_unique<td::RocksDbSecondary>(td::RocksDbSecondary::open(db_path_, std::move(secondary_db_options)).move_as_ok());
         break;
+      }
       default:
         UNREACHABLE();
     }
@@ -705,7 +708,7 @@ td::Status ArchiveSlice::try_catch_up_with_primary() {
       R2.ensure();
       slice_size_ = td::to_integer<td::uint32>(value);
       CHECK(slice_size_ > 0);
-      for (td::uint32 i = packages_.size(); i < tot; i++) {
+      for (td::uint64 i = packages_.size(); i < tot; i++) {
         R2 = kv_->get(PSTRING() << "status." << i, value);
         R2.ensure();
         auto len = td::to_integer<td::uint64>(value);
@@ -716,7 +719,7 @@ td::Status ArchiveSlice::try_catch_up_with_primary() {
           ver = td::to_integer<td::uint32>(value);
         }
         auto v = archive_id_ + slice_size_ * i;
-        add_package(v, len, ver);
+        add_package(static_cast<td::uint32>(v), len, ver);
       }
     }
   }
@@ -760,7 +763,8 @@ void ArchiveSlice::set_async_mode(bool mode, td::Promise<td::Unit> promise) {
 }
 
 ArchiveSlice::ArchiveSlice(td::uint32 archive_id, bool key_blocks_only, bool temp, bool finalized, std::string db_root,
-                           td::actor::ActorId<ArchiveLru> archive_lru, DbStatistics statistics, td::DbOpenMode mode)
+                           td::actor::ActorId<ArchiveLru> archive_lru, DbStatistics statistics, td::DbOpenMode mode, 
+                           td::optional<std::string> secondary_workdir)
     : archive_id_(archive_id)
     , key_blocks_only_(key_blocks_only)
     , temp_(temp)
@@ -769,7 +773,8 @@ ArchiveSlice::ArchiveSlice(td::uint32 archive_id, bool key_blocks_only, bool tem
     , db_root_(std::move(db_root))
     , archive_lru_(std::move(archive_lru))
     , statistics_(statistics)
-    , mode_(mode) {
+    , mode_(mode)
+    , secondary_workdir_(std::move(secondary_workdir)) {
   db_path_ = PSTRING() << db_root_ << p_id_.path() << p_id_.name() << ".index";
 }
 
