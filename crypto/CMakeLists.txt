@@ -434,7 +434,7 @@ if (WINGETOPT_FOUND)
 endif()
 
 add_executable(mintless-proof-generator util/mintless-proof-generator.cpp)
-target_link_libraries(mintless-proof-generator PRIVATE ton_crypto ton_block git ${JEMALLOC_LIBRARIES})
+target_link_libraries(mintless-proof-generator PRIVATE ton_crypto ton_block git smc-envelope ${JEMALLOC_LIBRARIES})
 
 if (JEMALLOC_FOUND)
   target_include_directories(mintless-proof-generator PRIVATE ${JEMALLOC_INCLUDE_DIR})

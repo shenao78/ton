@@ -29,6 +29,8 @@
 #include "vm/cells/MerkleProof.h"
 #include "vm/db/StaticBagOfCellsDb.h"
 
+#include "crypto/smc-envelope/SmartContract.h"
+
 #include <fstream>
 #include <common/delay.h>
 
@@ -43,7 +45,11 @@ void print_help() {
   std::cerr << "  Generate a proof for address <address> from tree <input-boc>, save boc to file <output-file>.\n\n";
   std::cerr << "mintless-proof-generator parse <input-boc> <output-file>\n";
   std::cerr << "  Read a tree from <input-boc> and output it as text to <output-file>.\n";
-  std::cerr << "  Output format: same as input for 'generate'.\n\n";
+  std::cerr << "  Output format: same as input for 'generate'.\n";
+  std::cerr << "  Default <threads>: 1\n\n";
+  std::cerr << "mintless-proof-generator parse_ext <input-boc> <output-file> <jetton-addr> <jetton-code-boc> <jetton-data-boc> <config-boc> [--threads <threads>]\n";
+  std::cerr << "  Read a tree from <input-boc> and output it as text to <output-file>.\n";
+  std::cerr << "  Output format: each line is <owner_address> <jetton_wallet_address> <amount> <start_from> <expired_at>.\n\n";
   std::cerr << "mintless-proof-generator make_all_proofs <input-boc> <output-file> [--threads <threads>]\n";
   std::cerr << "  Read a tree from <input-boc> and output proofs for all accounts to <output-file>.\n";
   std::cerr << "  Output format: <address>,<proof-base64>\n";
@@ -233,6 +239,140 @@ td::Status run_parse(std::string in_filename, std::string out_filename) {
   return td::Status::OK();
 }
 
+class ParseExtActor : public td::actor::core::Actor {
+ public:
+  ParseExtActor(std::string in_filename, std::string out_filename, std::string jetton_master_address,
+                         std::string jetton_master_code_file, std::string jetton_master_data_file, std::string config_file, int threads)
+                         : in_filename_(in_filename), out_filename_(out_filename), jetton_master_address_(jetton_master_address),
+                         jetton_master_code_file_(jetton_master_code_file), jetton_master_data_file_(jetton_master_data_file), config_file_(config_file), max_workers_(threads) {
+  }
+
+  void start_up() override {
+    auto S = [&]() -> td::Status {
+      LOG(INFO) << "Parsing " << in_filename_;
+      out_file_.open(out_filename_);
+      LOG_CHECK(out_file_.is_open()) << "Cannot open file " << out_filename_;
+      TRY_RESULT(blob_view, td::FileBlobView::create(in_filename_));
+      TRY_RESULT(boc, vm::StaticBagOfCellsDbLazy::create(std::move(blob_view)));
+      TRY_RESULT(root, boc->get_root_cell(0));
+      LOG(INFO) << "Root hash = " << root->get_hash().to_hex();
+      dict_ = vm::Dictionary{root, KEY_LEN};
+
+      TRY_RESULT(jetton_master, block::StdAddress::parse(jetton_master_address_));
+      TRY_RESULT(jetton_master_code_slice, td::read_file(jetton_master_code_file_));
+      TRY_RESULT(jetton_master_code, vm::std_boc_deserialize(jetton_master_code_slice));
+      TRY_RESULT(jetton_master_data_slice, td::read_file(jetton_master_data_file_));
+      TRY_RESULT(jetton_master_data, vm::std_boc_deserialize(jetton_master_data_slice));
+      TRY_RESULT(config_slice, td::read_file(config_file_));
+      TRY_RESULT(config, vm::std_boc_deserialize(config_slice));
+      auto global_config = std::make_shared<block::Config>(config, td::Bits256::zero(), block::Config::needWorkchainInfo | block::Config::needSpecialSmc | block::Config::needCapabilities);
+      TRY_STATUS(global_config->unpack());
+      smc_ = ton::SmartContract({jetton_master_code, jetton_master_data});
+      args_.set_address(jetton_master);
+      args_.set_method_id("get_wallet_address");
+      args_.set_config(global_config);
+      return td::Status::OK();
+    }();
+    S.ensure();
+    run();
+    alarm_timestamp() = td::Timestamp::in(5.0);
+  }
+
+  void alarm() override {
+    alarm_timestamp() = td::Timestamp::in(5.0);
+    LOG(INFO) << "Processed " << written_count_ << " entries";
+  }
+
+  void run() {
+    for (auto it = pending_results_.begin(); it != pending_results_.end() && !it->second.empty();) {
+      out_file_ << it->second << "\n";
+      LOG_CHECK(!out_file_.fail()) << "Failed to write to " << out_filename_;
+      it = pending_results_.erase(it);
+      ++written_count_;
+    }
+    while (active_workers_ < max_workers_ && !eof_) {
+      td::Ref<vm::CellSlice> value = dict_.lookup_nearest_key(current_key_, true, current_idx_ == 0);
+      if (value.is_null()) {
+        eof_ = true;
+        break;
+      }
+      run_worker(current_key_, current_idx_, value);
+      ++current_idx_;
+      ++active_workers_;
+    }
+    if (eof_ && active_workers_ == 0) {
+      out_file_.close();
+      LOG_CHECK(!out_file_.fail()) << "Failed to write to " << out_filename_;
+      LOG(INFO) << "Written " << written_count_ << " entries to " << out_filename_;
+      stop();
+      td::actor::SchedulerContext::get()->stop();
+    }
+  }
+
+  void run_worker(td::BitArray<KEY_LEN> key, td::uint64 idx, td::Ref<vm::CellSlice> value) {
+    pending_results_[idx] = "";
+    ton::delay_action(
+        [SelfId = actor_id(this), key, idx, value, args = args_, smc = smc_, root = dict_.get_root_cell()]() mutable {
+          Entry e = Entry::parse(key, *value);
+          std::vector<vm::StackEntry> stack = { block::tlb::t_MsgAddressInt.pack_std_address(e.address) };
+          args.set_stack(stack);
+          auto res = smc.run_get_method(args);
+          CHECK(res.success);
+          CHECK(res.stack->depth() == 1);
+          CHECK(res.stack->at(0).type() == vm::StackEntry::t_slice);
+          block::StdAddress wallet_addr;
+          CHECK(block::tlb::t_MsgAddressInt.extract_std_address(res.stack.write().pop_cellslice(), wallet_addr, true));
+          std::string result = PSTRING() << e.address.workchain << ":" << e.address.addr.to_hex()
+                  << " " << wallet_addr.workchain << ":" << wallet_addr.addr.to_hex() << " "
+                  << " " << e.amount->to_dec_string() << " "
+                  << e.start_from << " " << e.expired_at;
+
+          td::actor::send_closure(SelfId, &ParseExtActor::on_result, idx, std::move(result));
+        },
+        td::Timestamp::now());
+  }
+
+  void on_result(td::uint64 idx, std::string result) {
+    pending_results_[idx] = std::move(result);
+    --active_workers_;
+    run();
+  }
+
+ private:
+  std::string in_filename_;
+  std::string out_filename_;
+  std::string jetton_master_address_;
+  std::string jetton_master_code_file_; 
+  std::string jetton_master_data_file_;
+  std::string config_file_;
+
+  ton::SmartContract smc_{ton::SmartContract::State{td::Ref<vm::Cell>(), td::Ref<vm::Cell>()}};
+  ton::SmartContract::Args args_;
+
+  int max_workers_;
+
+  std::ofstream out_file_;
+  vm::Dictionary dict_{KEY_LEN};
+  td::BitArray<KEY_LEN> current_key_ = td::BitArray<KEY_LEN>::zero();
+  td::uint64 current_idx_ = 0;
+  bool eof_ = false;
+  int active_workers_ = 0;
+
+  std::map<td::uint64, std::string> pending_results_;
+  td::uint64 written_count_ = 0;
+};
+
+td::Status run_parse_ext(std::string in_filename, std::string out_filename, std::string jetton_master_address,
+                         std::string jetton_master_code_file, std::string jetton_master_data_file, std::string config_file, int threads) {
+  td::actor::Scheduler scheduler({(size_t)threads});
+  scheduler.run_in_context(
+      [&] { td::actor::create_actor<ParseExtActor>("parse_ext", in_filename, out_filename, jetton_master_address, jetton_master_code_file, jetton_master_data_file, config_file, threads).release(); });
+  while (scheduler.run(1)) {
+  }
+  log_mem_stat();
+  return td::Status::OK();
+}
+
 class MakeAllProofsActor : public td::actor::core::Actor {
  public:
   MakeAllProofsActor(std::string in_filename, std::string out_filename, int max_workers)
@@ -363,6 +503,25 @@ int main(int argc, char *argv[]) {
         print_help();
       }
       run_parse(argv[2], argv[3]).ensure();
+      return 0;
+    }
+    if (command == "parse_ext") {
+      std::vector<std::string> args;
+      int threads = 1;
+      for (int i = 2; i < argc; ++i) {
+        if (!strcmp(argv[i], "--threads")) {
+          ++i;
+          auto r = td::to_integer_safe<int>(td::as_slice(argv[i]));
+          LOG_CHECK(r.is_ok() && r.ok() >= 1 && r.ok() <= 127) << "<threads> should be in [1..127]";
+          threads = r.move_as_ok();
+        } else {
+          args.push_back(argv[i]);
+        }
+      }
+      if (args.size() != 6) {
+        print_help();
+      }
+      run_parse_ext(args[0], args[1], args[2], args[3], args[4], args[5], threads).ensure();
       return 0;
     }
 
