@@ -255,7 +255,7 @@ class ParseExtActor : public td::actor::core::Actor {
       TRY_RESULT(blob_view, td::FileBlobView::create(in_filename_));
       TRY_RESULT(boc, vm::StaticBagOfCellsDbLazy::create(std::move(blob_view)));
       TRY_RESULT(root, boc->get_root_cell(0));
-      LOG(INFO) << "Root hash = " << root->get_hash().to_hex();
+      LOG(INFO) << "BoC Root hash = " << root->get_hash().to_hex();
       dict_ = vm::Dictionary{root, KEY_LEN};
 
       TRY_RESULT(jetton_master, block::StdAddress::parse(jetton_master_address_));
@@ -269,8 +269,19 @@ class ParseExtActor : public td::actor::core::Actor {
       TRY_STATUS(global_config->unpack());
       smc_ = ton::SmartContract({jetton_master_code, jetton_master_data});
       args_.set_address(jetton_master);
-      args_.set_method_id("get_wallet_address");
+      args_.set_method_id("get_mintless_airdrop_hashmap_root");
       args_.set_config(global_config);
+
+      auto res = smc_.run_get_method(args_);
+      CHECK(res.success);
+      CHECK(res.stack->depth() == 1);
+      CHECK(res.stack->at(0).type() == vm::StackEntry::t_int);
+      auto root_hash = res.stack.write().pop_int();
+      LOG(INFO) << "SmC Root hash = " << root_hash->to_hex_string(true);
+      LOG_CHECK(root->get_hash().to_hex() == root_hash->to_hex_string(true)) << "Root hash mismatch";
+
+      args_.set_method_id("get_wallet_address");
+
       return td::Status::OK();
     }();
     S.ensure();
@@ -323,7 +334,7 @@ class ParseExtActor : public td::actor::core::Actor {
           block::StdAddress wallet_addr;
           CHECK(block::tlb::t_MsgAddressInt.extract_std_address(res.stack.write().pop_cellslice(), wallet_addr, true));
           std::string result = PSTRING() << e.address.workchain << ":" << e.address.addr.to_hex()
-                  << " " << wallet_addr.workchain << ":" << wallet_addr.addr.to_hex() << " "
+                  << " " << wallet_addr.workchain << ":" << wallet_addr.addr.to_hex()
                   << " " << e.amount->to_dec_string() << " "
                   << e.start_from << " " << e.expired_at;
 
