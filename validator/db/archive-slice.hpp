@@ -158,6 +158,7 @@ class ArchiveSlice : public td::actor::Actor {
   td::actor::ActorId<ArchiveLru> archive_lru_;
   std::unique_ptr<td::KeyValue> kv_;
   td::DbOpenMode mode_;
+  td::Timestamp last_catch_up_;
 
   struct PackageInfo {
     PackageInfo(std::shared_ptr<Package> package, td::actor::ActorOwn<PackageWriter> writer, BlockSeqno id,

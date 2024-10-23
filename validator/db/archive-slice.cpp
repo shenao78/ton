@@ -485,6 +485,7 @@ void ArchiveSlice::before_query() {
         break;
       case td::DbOpenMode::db_secondary:
         kv_ = std::make_unique<td::RocksDbSecondary>(td::RocksDbSecondary::open(db_path_).move_as_ok());
+        last_catch_up_ = td::Timestamp::now();
         break;
       default:
         UNREACHABLE();
@@ -546,6 +547,13 @@ void ArchiveSlice::before_query() {
     td::actor::send_closure(archive_lru_, &ArchiveLru::on_query, actor_id(this), p_id_,
                             packages_.size() + ESTIMATED_DB_OPEN_FILES);
   }
+  if (mode_ == td::DbOpenMode::db_secondary) {
+    auto now = td::Timestamp::now();
+    if (now.at() - last_catch_up_.at() > 1.0) {
+      try_catch_up_with_primary().ensure();
+      last_catch_up_ = now;
+    }
+  }
 }
 
 void ArchiveSlice::open_files() {
@@ -592,7 +600,6 @@ void ArchiveSlice::end_async_query() {
 
 td::Status ArchiveSlice::try_catch_up_with_primary() {
   CHECK(mode_ == td::DbOpenMode::db_secondary);
-  before_query();
 
   TRY_STATUS(static_cast<td::RocksDbSecondary *>(kv_.get())->try_catch_up_with_primary());
 
